@@ -1,9 +1,9 @@
 import os
 from collections import defaultdict
+import subprocess
 
 print("🚀 Gerando SUPER LISTA...")
 
-# 📂 CAMINHOS (ORDEM DE PRIORIDADE)
 playlists = [
     r"C:\Users\User\Dev\h\h.m3u8",
     r"C:\Users\User\Dev\pluto-tv\pluto_br_final.m3u8",
@@ -21,14 +21,59 @@ def extrair_grupo(extinf):
         return extinf.split('group-title="')[1].split('"')[0]
     return "VARIEDADES"
 
-# 🔥 LER TODAS AS PLAYLISTS NA ORDEM
+def normalizar_grupo(grupo):
+
+    g = grupo.strip().upper()
+
+    if "EVENT" in g:
+        return "EVENTOS"
+
+    if "ABERTA" in g:
+        return "TV ABERTA"
+
+    if "SPORT" in g or "ESPORTE" in g:
+        return "ESPORTES"
+
+    if "MOVIE" in g or "FILME" in g:
+        return "FILMES"
+
+    if any(x in g for x in ["SERIE", "SÉRIE", "DRAMA", "COMED"]):
+        return "SÉRIES"
+
+    if "DOC" in g:
+        return "DOCUMENTÁRIOS"
+
+    if "ANIME" in g:
+        return "ANIME & TOKUSATSU"
+
+    if "DESENHO" in g or "CARTOON" in g:
+        return "DESENHOS 24H"
+
+    if "INFANT" in g or "KIDS" in g:
+        return "INFANTIL"
+
+    if "MUSIC" in g or "MÚSICA" in g:
+        return "MÚSICA"
+
+    if "NEWS" in g or "NOTIC" in g:
+        return "NOTÍCIAS"
+
+    if "RELIG" in g:
+        return "RELIGIOSO"
+
+    if "RADIO" in g:
+        return "RÁDIO"
+
+    if "ADULT" in g:
+        return "ADULTO"
+
+    return "VARIEDADES"
+
+# 🔥 LER PLAYLISTS
 for arquivo in playlists:
 
     if not os.path.exists(arquivo):
-        print(f"⚠️ Não encontrado: {arquivo}")
         continue
-
-    print(f"📂 Processando: {arquivo}")
 
     with open(arquivo, "r", encoding="utf-8", errors="ignore") as f:
         linhas = f.readlines()
@@ -47,32 +92,32 @@ for arquivo in playlists:
 
             nome = extinf.split(",")[-1].strip().upper()
 
-            # 🎯 REMOVE DUPLICADOS COM PRIORIDADE
             if nome not in canais_vistos:
                 canais_vistos.add(nome)
-                saida_temp.append(extinf)
-                saida_temp.append(url)
+                saida_temp.append((extinf, url))
 
             i += 2
             continue
 
         i += 1
 
-# 🎯 ORGANIZAR POR GRUPOS
+# 🎯 AGRUPAR
 grupos = defaultdict(list)
 
-i = 0
-while i < len(saida_temp):
+for extinf, url in saida_temp:
 
-    extinf = saida_temp[i]
-    url = saida_temp[i+1]
+    grupo_original = extrair_grupo(extinf)
+    grupo = normalizar_grupo(grupo_original)
 
-    grupo = extrair_grupo(extinf)
+    # 🔥 NÃO QUEBRA EXTINF — só substitui grupo se existir
+    if 'group-title="' in extinf:
+        extinf = extinf.split('group-title="')[0] + f'group-title="{grupo}",' + extinf.split(",")[-1]
+    else:
+        extinf = extinf.strip() + f' group-title="{grupo}"\n'
+
     grupos[grupo].append((extinf, url))
 
-    i += 2
-
-# 📊 SUA ORDEM PADRÃO
+# 📊 ORDEM
 ORDEM_GRUPOS = [
     "EVENTOS",
     "TV ABERTA",
@@ -81,13 +126,13 @@ ORDEM_GRUPOS = [
     "SÉRIES",
     "DOCUMENTÁRIOS",
     "ANIME & TOKUSATSU",
-    "DESENHOS 24H"
+    "DESENHOS 24H",
     "INFANTIL",
     "MÚSICA",
     "NOTÍCIAS",
     "RELIGIOSO",
-    "VARIEDADES"
-    "RÁDIO"
+    "VARIEDADES",
+    "RÁDIO",
     "ADULTO"
 ]
 
@@ -101,11 +146,12 @@ with open(saida_arquivo, "w", encoding="utf-8") as f:
                 f.write(extinf)
                 f.write(url)
 
-    # fallback
-    for grupo in grupos:
-        if grupo not in ORDEM_GRUPOS:
-            for extinf, url in grupos[grupo]:
-                f.write(extinf)
-                f.write(url)
+# 🔥 GIT PUSH (INVISÍVEL)
+try:
+    subprocess.run("git add .", shell=True)
+    subprocess.run('git commit --allow-empty -m "Atualização automática super lista"', shell=True)
+    subprocess.run("git push", shell=True)
+except:
+    pass
 
 print(f"✅ SUPER LISTA pronta! Total: {len(canais_vistos)} canais")
