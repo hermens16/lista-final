@@ -2,7 +2,7 @@ import os
 from collections import defaultdict
 import subprocess
 
-print("🚀 Gerando SUPER LISTA...")
+print("🚀 Gerando SUPER LISTA (SEM FILTRO DE DUPLICADOS)...")
 
 playlists = [
     r"C:\Users\User\Dev\h\h.m3u8",
@@ -13,8 +13,8 @@ playlists = [
 
 saida_arquivo = "super_lista.m3u"
 
-canais_vistos = set()
 saida_temp = []
+total_canais = 0
 
 def extrair_grupo(extinf):
     if 'group-title="' in extinf:
@@ -69,11 +69,14 @@ def normalizar_grupo(grupo):
 
     return "VARIEDADES"
 
-# 🔥 LER PLAYLISTS
+# 🔥 LER TODAS AS PLAYLISTS (SEM FILTRO)
 for arquivo in playlists:
 
     if not os.path.exists(arquivo):
+        print(f"⚠️ Não encontrado: {arquivo}")
         continue
+
+    print(f"📂 Processando: {arquivo}")
 
     with open(arquivo, "r", encoding="utf-8", errors="ignore") as f:
         linhas = f.readlines()
@@ -90,11 +93,8 @@ for arquivo in playlists:
             extinf = linhas[i]
             url = linhas[i+1]
 
-            nome = extinf.split(",")[-1].strip().upper()
-
-            if nome not in canais_vistos:
-                canais_vistos.add(nome)
-                saida_temp.append((extinf, url))
+            saida_temp.append((extinf, url))
+            total_canais += 1
 
             i += 2
             continue
@@ -109,9 +109,11 @@ for extinf, url in saida_temp:
     grupo_original = extrair_grupo(extinf)
     grupo = normalizar_grupo(grupo_original)
 
-    # 🔥 NÃO QUEBRA EXTINF — só substitui grupo se existir
+    # 🔥 substituição segura do grupo
     if 'group-title="' in extinf:
-        extinf = extinf.split('group-title="')[0] + f'group-title="{grupo}",' + extinf.split(",")[-1]
+        inicio = extinf.split('group-title="')[0]
+        nome = extinf.split(",")[-1]
+        extinf = f'{inicio}group-title="{grupo}",{nome}'
     else:
         extinf = extinf.strip() + f' group-title="{grupo}"\n'
 
@@ -146,12 +148,19 @@ with open(saida_arquivo, "w", encoding="utf-8") as f:
                 f.write(extinf)
                 f.write(url)
 
-# 🔥 GIT PUSH (INVISÍVEL)
+    # fallback (caso apareça grupo fora do padrão)
+    for grupo in grupos:
+        if grupo not in ORDEM_GRUPOS:
+            for extinf, url in grupos[grupo]:
+                f.write(extinf)
+                f.write(url)
+
+# 🔥 GIT PUSH
 try:
     subprocess.run("git add .", shell=True)
-    subprocess.run('git commit --allow-empty -m "Atualização automática super lista"', shell=True)
+    subprocess.run('git commit --allow-empty -m "Atualização automática super lista (sem deduplicação)"', shell=True)
     subprocess.run("git push", shell=True)
 except:
     pass
 
-print(f"✅ SUPER LISTA pronta! Total: {len(canais_vistos)} canais")
+print(f"✅ SUPER LISTA pronta! Total: {total_canais} canais (SEM FILTRO)")
