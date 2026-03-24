@@ -4,7 +4,7 @@ import subprocess
 import unicodedata
 import re
 
-print("🚀 SUPER LISTA (H 100% INTACTA)")
+print("🚀 SUPER LISTA (H ISOLADA + FAST CONTROLADO)")
 
 playlists = [
     ("H", r"C:\Users\User\Dev\h\h.m3u8"),
@@ -15,18 +15,20 @@ playlists = [
 
 saida_arquivo = "super_lista.m3u"
 
+# 🔥 separação total
+saida_h = []
+saida_fast = []
+
 canais_fast_vistos = set()
-saida_temp = []
 
 total_lidos = 0
 total_final = 0
 
-# 🧠 NORMALIZAÇÃO
+# 🧠 NORMALIZAÇÃO LEVE (MUITO IMPORTANTE)
 def normalizar_nome(nome):
     nome = nome.upper().strip()
     nome = unicodedata.normalize('NFKD', nome)
     nome = nome.encode('ASCII', 'ignore').decode()
-    nome = re.sub(r'[^A-Z0-9 ]', '', nome)
     nome = re.sub(r'\s+', ' ', nome)
     return nome
 
@@ -70,7 +72,6 @@ def normalizar_grupo(grupo):
 
     return "VARIEDADES"
 
-# 🚫 filtro só para FAST
 def canal_valido(nome):
     lixo = ["INFORMACOES EM BREVE", "EM BREVE", ""]
     return nome not in lixo
@@ -79,7 +80,6 @@ def canal_valido(nome):
 for tipo, arquivo in playlists:
 
     if not os.path.exists(arquivo):
-        print(f"⚠️ Não encontrado: {arquivo}")
         continue
 
     print(f"📂 {tipo}: {arquivo}")
@@ -104,29 +104,31 @@ for tipo, arquivo in playlists:
 
             total_lidos += 1
 
-            # 🟢 REGRA H (INTACTA)
+            # 🟢 H = NÃO TOCA
             if tipo == "H":
-                saida_temp.append((extinf, url))
+                saida_h.append((extinf, url))
                 total_final += 1
 
-            # 🔵 REGRA FAST
+            # 🔵 FAST
             else:
 
-                # remove lixo só aqui
                 if not canal_valido(nome_norm):
                     i += 2
                     continue
 
-                # deduplicação só FAST
+                # dedup só entre FAST
                 if nome_norm not in canais_fast_vistos:
                     canais_fast_vistos.add(nome_norm)
-                    saida_temp.append((extinf, url))
+                    saida_fast.append((extinf, url))
                     total_final += 1
 
             i += 2
             continue
 
         i += 1
+
+# 🔥 JUNÇÃO FINAL (ORDEM GARANTIDA)
+saida_temp = saida_h + saida_fast
 
 # 🎯 AGRUPAR
 grupos = defaultdict(list)
@@ -177,7 +179,7 @@ with open(saida_arquivo, "w", encoding="utf-8") as f:
 # 🔥 GIT PUSH
 try:
     subprocess.run("git add .", shell=True)
-    subprocess.run('git commit --allow-empty -m "Super lista corrigida (H 100% intacta)"', shell=True)
+    subprocess.run('git commit --allow-empty -m "Correção: H isolada + FAST dedup correto"', shell=True)
     subprocess.run("git push", shell=True)
 except:
     pass
