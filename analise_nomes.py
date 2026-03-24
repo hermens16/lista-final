@@ -1,6 +1,6 @@
 import os
 
-arquivo = "samsung_final.m3u"
+arquivo = "super_lista.m3u"
 saida = "lista_completa_canais.txt"
 
 print("📋 Gerando lista completa de canais...")

@@ -1,0 +1,80 @@
+📊 RELATÓRIO IPTV
+
+Total de canais: 3189
+Total de grupos: 13
+
+📂 CANAIS POR GRUPO:
+VARIEDADES -> 838
+SÉRIES -> 502
+ESPORTES -> 406
+FILMES -> 310
+DOCUMENTÁRIOS -> 295
+INFANTIL -> 177
+DESENHOS 24H -> 162
+MÚSICA -> 147
+TV ABERTA -> 136
+ANIME & TOKUSATSU -> 65
+ADULTO -> 64
+RELIGIOSO -> 60
+EVENTOS -> 27
+
+🔁 DUPLICADOS EXATOS (TOP 20):
+INFORMAÇÕES EM BREVE -> 20
+WORLD POKER TOUR -> 5
+NARUTO -> 5
+BEYBLADE -> 5
+POKÉMON -> 5
+FIFA+ -> 4
+MR. BEAN -> 4
+NARUTO SHIPPUDEN -> 4
+PFL MMA -> 3
+SFT COMBAT -> 3
+FUEL TV -> 3
+SPORTSGRID -> 3
+BILLIARD TV -> 3
+WAYPOINT TV -> 3
+CRICKET GOLD -> 3
+THE BOAT SHOW -> 3
+DOCUMENTARY+ -> 3
+TURBO -> 3
+MOVIESPHERE -> 3
+MYTIME MOVIE NETWORK -> 3
+
+🧠 DUPLICADOS NORMALIZADOS (TOP 20):
+ -> 31
+INFORMAES EM BREVE -> 20
+TV -> 16
+SBS -> 15
+TVN -> 14
+MBC -> 12
+JTBC -> 11
+WORLD POKER TOUR -> 5
+KBS -> 5
+MBN -> 5
+NARUTO -> 5
+BEYBLADE -> 5
+POKMON -> 5
+YUGIOH -> 5
+FIFA -> 4
+MR BEAN -> 4
+NARUTO SHIPPUDEN -> 4
+BLOOMBERG TV -> 4
+PFL MMA -> 3
+SFT COMBAT -> 3
+
+🌐 TOP SERVIDORES:
+jmp2.uk -> 1497
+lmdns.online:80 -> 653
+epg.provider.plex.tv -> 257
+service-stitcher.clusters.pluto.tv -> 185
+cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv -> 170
+stream.ads.ottera.tv -> 22
+video01.soultv.com.br -> 17
+cdn-uw2-prod.tsv2.amagi.tv -> 11
+video01.logicahost.com.br -> 10
+video04.logicahost.com.br -> 9
+stmv1.srvif.com -> 9
+video03.logicahost.com.br -> 8
+w1.manasat.com -> 8
+video01.kshost.com.br -> 8
+video07.logicahost.com.br -> 7

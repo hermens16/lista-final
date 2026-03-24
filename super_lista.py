@@ -1,20 +1,35 @@
 import os
 from collections import defaultdict
 import subprocess
+import unicodedata
+import re
 
-print("🚀 Gerando SUPER LISTA (SEM FILTRO DE DUPLICADOS)...")
+print("🚀 SUPER LISTA (H INTACTA + DEDUP FAST)")
 
 playlists = [
-    r"C:\Users\User\Dev\h\h.m3u8",
-    r"C:\Users\User\Dev\pluto-tv\pluto_br_final.m3u8",
-    r"C:\Users\User\Dev\plex-tv\playlist_final.m3u",
-    r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u"
+    ("H", r"C:\Users\User\Dev\h\h.m3u8"),
+    ("PLUTO", r"C:\Users\User\Dev\pluto-tv\pluto_br_final.m3u8"),
+    ("PLEX", r"C:\Users\User\Dev\plex-tv\playlist_final.m3u"),
+    ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
 
 saida_arquivo = "super_lista.m3u"
 
+# 🔥 controle separado
+canais_fast_vistos = set()  # só para pluto/plex/samsung
 saida_temp = []
-total_canais = 0
+
+total_lidos = 0
+total_final = 0
+
+# 🧠 NORMALIZAÇÃO
+def normalizar_nome(nome):
+    nome = nome.upper().strip()
+    nome = unicodedata.normalize('NFKD', nome)
+    nome = nome.encode('ASCII', 'ignore').decode()
+    nome = re.sub(r'[^A-Z0-9 ]', '', nome)
+    nome = re.sub(r'\s+', ' ', nome)
+    return nome
 
 def extrair_grupo(extinf):
     if 'group-title="' in extinf:
@@ -27,56 +42,47 @@ def normalizar_grupo(grupo):
 
     if "EVENT" in g:
         return "EVENTOS"
-
     if "ABERTA" in g:
         return "TV ABERTA"
-
     if "SPORT" in g or "ESPORTE" in g:
         return "ESPORTES"
-
     if "MOVIE" in g or "FILME" in g:
         return "FILMES"
-
     if any(x in g for x in ["SERIE", "SÉRIE", "DRAMA", "COMED"]):
         return "SÉRIES"
-
     if "DOC" in g:
         return "DOCUMENTÁRIOS"
-
     if "ANIME" in g:
         return "ANIME & TOKUSATSU"
-
     if "DESENHO" in g or "CARTOON" in g:
         return "DESENHOS 24H"
-
     if "INFANT" in g or "KIDS" in g:
         return "INFANTIL"
-
     if "MUSIC" in g or "MÚSICA" in g:
         return "MÚSICA"
-
     if "NEWS" in g or "NOTIC" in g:
         return "NOTÍCIAS"
-
     if "RELIG" in g:
         return "RELIGIOSO"
-
     if "RADIO" in g:
         return "RÁDIO"
-
     if "ADULT" in g:
         return "ADULTO"
 
     return "VARIEDADES"
 
-# 🔥 LER TODAS AS PLAYLISTS (SEM FILTRO)
-for arquivo in playlists:
+def canal_valido(nome):
+    lixo = ["INFORMACOES EM BREVE", "EM BREVE", ""]
+    return nome not in lixo
+
+# 🔥 PROCESSAMENTO
+for tipo, arquivo in playlists:
 
     if not os.path.exists(arquivo):
         print(f"⚠️ Não encontrado: {arquivo}")
         continue
 
-    print(f"📂 Processando: {arquivo}")
+    print(f"📂 {tipo}: {arquivo}")
 
     with open(arquivo, "r", encoding="utf-8", errors="ignore") as f:
         linhas = f.readlines()
@@ -93,8 +99,27 @@ for arquivo in playlists:
             extinf = linhas[i]
             url = linhas[i+1]
 
-            saida_temp.append((extinf, url))
-            total_canais += 1
+            nome_original = extinf.split(",")[-1].strip()
+            nome_norm = normalizar_nome(nome_original)
+
+            total_lidos += 1
+
+            if not canal_valido(nome_norm):
+                i += 2
+                continue
+
+            # 🔥 REGRA PRINCIPAL
+            if tipo == "H":
+                # NUNCA remove duplicado
+                saida_temp.append((extinf, url))
+                total_final += 1
+
+            else:
+                # DEDUP apenas entre FAST
+                if nome_norm not in canais_fast_vistos:
+                    canais_fast_vistos.add(nome_norm)
+                    saida_temp.append((extinf, url))
+                    total_final += 1
 
             i += 2
             continue
@@ -109,7 +134,6 @@ for extinf, url in saida_temp:
     grupo_original = extrair_grupo(extinf)
     grupo = normalizar_grupo(grupo_original)
 
-    # 🔥 substituição segura do grupo
     if 'group-title="' in extinf:
         inicio = extinf.split('group-title="')[0]
         nome = extinf.split(",")[-1]
@@ -148,19 +172,15 @@ with open(saida_arquivo, "w", encoding="utf-8") as f:
                 f.write(extinf)
                 f.write(url)
 
-    # fallback (caso apareça grupo fora do padrão)
-    for grupo in grupos:
-        if grupo not in ORDEM_GRUPOS:
-            for extinf, url in grupos[grupo]:
-                f.write(extinf)
-                f.write(url)
-
 # 🔥 GIT PUSH
 try:
     subprocess.run("git add .", shell=True)
-    subprocess.run('git commit --allow-empty -m "Atualização automática super lista (sem deduplicação)"', shell=True)
+    subprocess.run('git commit --allow-empty -m "Super lista (H intacta + FAST deduplicado)"', shell=True)
     subprocess.run("git push", shell=True)
 except:
     pass
 
-print(f"✅ SUPER LISTA pronta! Total: {total_canais} canais (SEM FILTRO)")
+print("\n📊 RELATÓRIO FINAL:")
+print(f"➡️ Canais lidos: {total_lidos}")
+print(f"➡️ Canais finais: {total_final}")
+print(f"➡️ Removidos (apenas FAST duplicados): {total_lidos - total_final}")
