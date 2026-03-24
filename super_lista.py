@@ -4,7 +4,7 @@ import subprocess
 import unicodedata
 import re
 
-print("🚀 SUPER LISTA (H INTACTA + DEDUP FAST)")
+print("🚀 SUPER LISTA (H 100% INTACTA)")
 
 playlists = [
     ("H", r"C:\Users\User\Dev\h\h.m3u8"),
@@ -15,8 +15,7 @@ playlists = [
 
 saida_arquivo = "super_lista.m3u"
 
-# 🔥 controle separado
-canais_fast_vistos = set()  # só para pluto/plex/samsung
+canais_fast_vistos = set()
 saida_temp = []
 
 total_lidos = 0
@@ -71,6 +70,7 @@ def normalizar_grupo(grupo):
 
     return "VARIEDADES"
 
+# 🚫 filtro só para FAST
 def canal_valido(nome):
     lixo = ["INFORMACOES EM BREVE", "EM BREVE", ""]
     return nome not in lixo
@@ -104,18 +104,20 @@ for tipo, arquivo in playlists:
 
             total_lidos += 1
 
-            if not canal_valido(nome_norm):
-                i += 2
-                continue
-
-            # 🔥 REGRA PRINCIPAL
+            # 🟢 REGRA H (INTACTA)
             if tipo == "H":
-                # NUNCA remove duplicado
                 saida_temp.append((extinf, url))
                 total_final += 1
 
+            # 🔵 REGRA FAST
             else:
-                # DEDUP apenas entre FAST
+
+                # remove lixo só aqui
+                if not canal_valido(nome_norm):
+                    i += 2
+                    continue
+
+                # deduplicação só FAST
                 if nome_norm not in canais_fast_vistos:
                     canais_fast_vistos.add(nome_norm)
                     saida_temp.append((extinf, url))
@@ -175,7 +177,7 @@ with open(saida_arquivo, "w", encoding="utf-8") as f:
 # 🔥 GIT PUSH
 try:
     subprocess.run("git add .", shell=True)
-    subprocess.run('git commit --allow-empty -m "Super lista (H intacta + FAST deduplicado)"', shell=True)
+    subprocess.run('git commit --allow-empty -m "Super lista corrigida (H 100% intacta)"', shell=True)
     subprocess.run("git push", shell=True)
 except:
     pass
@@ -183,4 +185,4 @@ except:
 print("\n📊 RELATÓRIO FINAL:")
 print(f"➡️ Canais lidos: {total_lidos}")
 print(f"➡️ Canais finais: {total_final}")
-print(f"➡️ Removidos (apenas FAST duplicados): {total_lidos - total_final}")
+print(f"➡️ Removidos (apenas FAST): {total_lidos - total_final}")
