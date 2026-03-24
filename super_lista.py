@@ -3,11 +3,13 @@ from collections import defaultdict
 import subprocess
 import unicodedata
 import re
+import requests
 
-print("🚀 SUPER LISTA (H ISOLADA + FAST CONTROLADO)")
+print("🚀 SUPER LISTA (H VIA GITHUB + FAST CONTROLADO)")
 
+# 🔥 PLAYLISTS (H AGORA VIA GITHUB)
 playlists = [
-    ("H", r"C:\Users\User\Dev\h\h.m3u8"),
+    ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
     ("PLUTO", r"C:\Users\User\Dev\pluto-tv\pluto_br_final.m3u8"),
     ("PLEX", r"C:\Users\User\Dev\plex-tv\playlist_final.m3u"),
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
@@ -15,7 +17,7 @@ playlists = [
 
 saida_arquivo = "super_lista.m3u"
 
-# 🔥 separação total
+# 🔥 separação
 saida_h = []
 saida_fast = []
 
@@ -24,7 +26,7 @@ canais_fast_vistos = set()
 total_lidos = 0
 total_final = 0
 
-# 🧠 NORMALIZAÇÃO LEVE (MUITO IMPORTANTE)
+# 🧠 NORMALIZAÇÃO
 def normalizar_nome(nome):
     nome = nome.upper().strip()
     nome = unicodedata.normalize('NFKD', nome)
@@ -38,7 +40,6 @@ def extrair_grupo(extinf):
     return "VARIEDADES"
 
 def normalizar_grupo(grupo):
-
     g = grupo.strip().upper()
 
     if "EVENT" in g:
@@ -76,17 +77,29 @@ def canal_valido(nome):
     lixo = ["INFORMACOES EM BREVE", "EM BREVE", ""]
     return nome not in lixo
 
+# 🔥 FUNÇÃO UNIVERSAL DE LEITURA (LOCAL + URL)
+def ler_playlist(caminho):
+    if caminho.startswith("http"):
+        try:
+            response = requests.get(caminho, timeout=20)
+            response.raise_for_status()
+            return response.text.splitlines(keepends=True)
+        except Exception as e:
+            print(f"❌ Erro ao baixar {caminho}: {e}")
+            return []
+    else:
+        if not os.path.exists(caminho):
+            print(f"⚠️ Não encontrado: {caminho}")
+            return []
+        with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
+            return f.readlines()
+
 # 🔥 PROCESSAMENTO
-for tipo, arquivo in playlists:
+for tipo, caminho in playlists:
 
-    if not os.path.exists(arquivo):
-        continue
+    print(f"📂 Processando: {tipo}")
 
-    print(f"📂 {tipo}: {arquivo}")
-
-    with open(arquivo, "r", encoding="utf-8", errors="ignore") as f:
-        linhas = f.readlines()
-
+    linhas = ler_playlist(caminho)
     i = 0
 
     while i < len(linhas):
@@ -104,19 +117,17 @@ for tipo, arquivo in playlists:
 
             total_lidos += 1
 
-            # 🟢 H = NÃO TOCA
+            # 🟢 H = NÃO REMOVE NADA
             if tipo == "H":
                 saida_h.append((extinf, url))
                 total_final += 1
 
-            # 🔵 FAST
+            # 🔵 FAST (Pluto, Plex, Samsung)
             else:
-
                 if not canal_valido(nome_norm):
                     i += 2
                     continue
 
-                # dedup só entre FAST
                 if nome_norm not in canais_fast_vistos:
                     canais_fast_vistos.add(nome_norm)
                     saida_fast.append((extinf, url))
@@ -127,7 +138,7 @@ for tipo, arquivo in playlists:
 
         i += 1
 
-# 🔥 JUNÇÃO FINAL (ORDEM GARANTIDA)
+# 🔥 ORDEM GARANTIDA
 saida_temp = saida_h + saida_fast
 
 # 🎯 AGRUPAR
@@ -138,16 +149,15 @@ for extinf, url in saida_temp:
     grupo_original = extrair_grupo(extinf)
     grupo = normalizar_grupo(grupo_original)
 
+    # 🔥 NÃO QUEBRA EXTINF
     if 'group-title="' in extinf:
-        inicio = extinf.split('group-title="')[0]
-        nome = extinf.split(",")[-1]
-        extinf = f'{inicio}group-title="{grupo}",{nome}'
+        extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
     else:
         extinf = extinf.strip() + f' group-title="{grupo}"\n'
 
     grupos[grupo].append((extinf, url))
 
-# 📊 ORDEM
+# 📊 ORDEM FINAL
 ORDEM_GRUPOS = [
     "EVENTOS",
     "TV ABERTA",
@@ -176,13 +186,25 @@ with open(saida_arquivo, "w", encoding="utf-8") as f:
                 f.write(extinf)
                 f.write(url)
 
-# 🔥 GIT PUSH
+    # fallback
+    for grupo in grupos:
+        if grupo not in ORDEM_GRUPOS:
+            for extinf, url in grupos[grupo]:
+                f.write(extinf)
+                f.write(url)
+
+# 🔥 GIT PUSH COM LOG
+def git(cmd):
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    print(r.stdout)
+    print(r.stderr)
+
 try:
-    subprocess.run("git add .", shell=True)
-    subprocess.run('git commit --allow-empty -m "Correção: H isolada + FAST dedup correto"', shell=True)
-    subprocess.run("git push", shell=True)
-except:
-    pass
+    git("git add -A")
+    git('git commit --allow-empty -m "Super lista auto update (H via GitHub + FAST dedup)"')
+    git("git push origin main")
+except Exception as e:
+    print(f"❌ Erro no git: {e}")
 
 print("\n📊 RELATÓRIO FINAL:")
 print(f"➡️ Canais lidos: {total_lidos}")
