@@ -1,12 +1,12 @@
 📊 RELATÓRIO IPTV
 
 Total lido (bruto): 3017
-Total final: 2758
+Total final: 2760
 Canais únicos: 2688
 Duplicados encontrados: 329
-Removidos (dedup): 259
+Removidos (dedup): 257
 
-Total grupos: 13
+Total grupos: 14
 
 📂 CANAIS POR GRUPO:
 ADULTO -> 64
@@ -18,10 +18,11 @@ EVENTOS -> 27
 FILMES -> 280
 INFANTIL -> 130
 MÚSICA -> 143
-RELIGIOSO -> 62
-SÉRIES -> 433
+NOTÍCIAS -> 91
+RELIGIOSO -> 61
+SÉRIES -> 434
 TV ABERTA -> 137
-VARIEDADES -> 726
+VARIEDADES -> 637
 
 🔁 DUPLICADOS (TOP 20):
 INFORMACOES EM BREVE -> 26

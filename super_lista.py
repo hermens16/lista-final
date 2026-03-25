@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA DUPLA + RELATÓRIOS (VERSÃO FINAL)")
+print("🚀 SUPER LISTA FINAL (CORRIGIDA DE VERDADE)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -44,15 +44,22 @@ def extrair_grupo(extinf):
         return extinf.split('group-title="')[1].split('"')[0]
     return "VARIEDADES"
 
-def normalizar_grupo(grupo):
-    g = grupo.strip().upper()
+# 🔥 CORREÇÃO DEFINITIVA NOTÍCIAS
+def normalizar_grupo(grupo, nome_canal):
 
-    # 🔥 NOTÍCIAS PRIORIDADE MÁXIMA
-    if any(x in g for x in [
-        "NEWS", "NOTIC", "JORNAL", "CNN",
-        "GLOBO NEWS", "GLOBONEWS",
-        "BLOOMBERG", "RECORD NEWS", "BAND NEWS"
+    g = grupo.strip().upper()
+    n = nome_canal.upper()
+
+    # 🔴 PRIORIDADE MÁXIMA: NOME
+    if any(x in n for x in [
+        "CNN", "GLOBO NEWS", "GLOBONEWS", "BLOOMBERG",
+        "RECORD NEWS", "BAND NEWS", "JP NEWS",
+        "JOVEM PAN NEWS", "NEWS"
     ]):
+        return "NOTÍCIAS"
+
+    # 🟡 SEGUNDA CAMADA: GRUPO
+    if any(x in g for x in ["NEWS", "NOTIC", "JORNAL"]):
         return "NOTÍCIAS"
 
     if "EVENT" in g:
@@ -84,9 +91,9 @@ def normalizar_grupo(grupo):
 
     return "VARIEDADES"
 
+# 🔥 NÃO REMOVE MAIS NADA
 def canal_valido(nome):
-    lixo = ["INFORMACOES EM BREVE", "EM BREVE", "", " "]
-    return nome not in lixo
+    return True
 
 def ler_playlist(caminho):
     if caminho.startswith("http"):
@@ -131,16 +138,12 @@ for tipo, caminho in playlists:
             contador_nomes[nome_norm] += 1
             total_lidos += 1
 
-            # 🟢 H (intocável)
+            # 🟢 H intacta
             if tipo == "H":
                 saida_h.append((extinf, url))
 
             # 🔵 FAST
             else:
-                if not canal_valido(nome_norm):
-                    i += 2
-                    continue
-
                 saida_fast_full.append((extinf, url))
 
                 if nome_norm not in canais_fast_vistos:
@@ -154,11 +157,13 @@ for tipo, caminho in playlists:
 
 # AGRUPAMENTO
 def montar_lista(saida_total):
+
     grupos = defaultdict(list)
 
     for extinf, url in saida_total:
 
-        grupo = normalizar_grupo(extrair_grupo(extinf))
+        nome_canal = extinf.split(",")[-1].strip()
+        grupo = normalizar_grupo(extrair_grupo(extinf), nome_canal)
 
         if 'group-title="' in extinf:
             extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
@@ -234,7 +239,7 @@ def git(cmd):
     print(r.stderr)
 
 git("git add -A")
-git('git commit --allow-empty -m "Super lista dual FINAL + relatórios completos"')
+git('git commit --allow-empty -m "Super lista FINAL corrigida (noticias + contagem real)"')
 git("git push origin main")
 
 print("✅ FINALIZADO COM SUCESSO")
