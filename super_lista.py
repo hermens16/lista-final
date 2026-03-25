@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA DUPLA + RELATÓRIOS")
+print("🚀 SUPER LISTA DUPLA + RELATÓRIOS (VERSÃO FINAL)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -29,6 +29,8 @@ saida_fast_full = []
 canais_fast_vistos = set()
 contador_nomes = Counter()
 
+total_lidos = 0
+
 # NORMALIZAÇÃO
 def normalizar_nome(nome):
     nome = nome.upper().strip()
@@ -45,8 +47,13 @@ def extrair_grupo(extinf):
 def normalizar_grupo(grupo):
     g = grupo.strip().upper()
 
-    if "NEWS" in g or "NOTIC" in g:
-        return "NOTÍCIAS"  # 🔥 prioridade máxima
+    # 🔥 NOTÍCIAS PRIORIDADE MÁXIMA
+    if any(x in g for x in [
+        "NEWS", "NOTIC", "JORNAL", "CNN",
+        "GLOBO NEWS", "GLOBONEWS",
+        "BLOOMBERG", "RECORD NEWS", "BAND NEWS"
+    ]):
+        return "NOTÍCIAS"
 
     if "EVENT" in g:
         return "EVENTOS"
@@ -78,7 +85,7 @@ def normalizar_grupo(grupo):
     return "VARIEDADES"
 
 def canal_valido(nome):
-    lixo = ["INFORMACOES EM BREVE", "EM BREVE", ""]
+    lixo = ["INFORMACOES EM BREVE", "EM BREVE", "", " "]
     return nome not in lixo
 
 def ler_playlist(caminho):
@@ -87,15 +94,19 @@ def ler_playlist(caminho):
             r = requests.get(caminho, timeout=20)
             return r.text.splitlines(keepends=True)
         except:
+            print(f"❌ Erro ao baixar: {caminho}")
             return []
     else:
         if not os.path.exists(caminho):
+            print(f"⚠️ Não encontrado: {caminho}")
             return []
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
 # PROCESSAMENTO
 for tipo, caminho in playlists:
+
+    print(f"📂 Processando: {tipo}")
 
     linhas = ler_playlist(caminho)
     i = 0
@@ -111,23 +122,27 @@ for tipo, caminho in playlists:
             url = linhas[i+1]
 
             nome = extinf.split(",")[-1].strip()
+
+            if not nome:
+                nome = "SEM NOME"
+
             nome_norm = normalizar_nome(nome)
 
             contador_nomes[nome_norm] += 1
+            total_lidos += 1
 
-            # H
+            # 🟢 H (intocável)
             if tipo == "H":
                 saida_h.append((extinf, url))
 
+            # 🔵 FAST
             else:
                 if not canal_valido(nome_norm):
                     i += 2
                     continue
 
-                # FULL (sem dedup)
                 saida_fast_full.append((extinf, url))
 
-                # DEDUP
                 if nome_norm not in canais_fast_vistos:
                     canais_fast_vistos.add(nome_norm)
                     saida_fast.append((extinf, url))
@@ -137,9 +152,8 @@ for tipo, caminho in playlists:
 
         i += 1
 
-# FUNÇÃO DE AGRUPAMENTO
+# AGRUPAMENTO
 def montar_lista(saida_total):
-
     grupos = defaultdict(list)
 
     for extinf, url in saida_total:
@@ -173,30 +187,45 @@ def salvar(nome_arquivo, grupos):
                     f.write(u)
 
 # LISTAS
-grupos_dedup = montar_lista(saida_h + saida_fast)
-grupos_full = montar_lista(saida_h + saida_fast_full)
+lista_dedup = saida_h + saida_fast
+lista_full = saida_h + saida_fast_full
+
+grupos_dedup = montar_lista(lista_dedup)
+grupos_full = montar_lista(lista_full)
 
 salvar(saida_dedup, grupos_dedup)
 salvar(saida_full, grupos_full)
 
-# RELATÓRIOS
-def gerar_relatorio(nome, grupos, total):
+# RELATÓRIO COMPLETO
+def gerar_relatorio(nome, grupos, lista_final):
+
+    duplicados_total = sum(qtd - 1 for qtd in contador_nomes.values() if qtd > 1)
+    canais_unicos = len(contador_nomes)
+    total_final = len(lista_final)
+
     with open(nome, "w", encoding="utf-8") as f:
+
         f.write("📊 RELATÓRIO IPTV\n\n")
-        f.write(f"Total canais: {total}\n")
+
+        f.write(f"Total lido (bruto): {total_lidos}\n")
+        f.write(f"Total final: {total_final}\n")
+        f.write(f"Canais únicos: {canais_unicos}\n")
+        f.write(f"Duplicados encontrados: {duplicados_total}\n")
+        f.write(f"Removidos (dedup): {total_lidos - total_final}\n\n")
+
         f.write(f"Total grupos: {len(grupos)}\n\n")
 
         f.write("📂 CANAIS POR GRUPO:\n")
-        for g in grupos:
+        for g in sorted(grupos):
             f.write(f"{g} -> {len(grupos[g])}\n")
 
         f.write("\n🔁 DUPLICADOS (TOP 20):\n")
-        for nome, qtd in contador_nomes.most_common(20):
+        for nome_canal, qtd in contador_nomes.most_common(20):
             if qtd > 1:
-                f.write(f"{nome} -> {qtd}\n")
+                f.write(f"{nome_canal} -> {qtd}\n")
 
-gerar_relatorio(relatorio_dedup, grupos_dedup, len(saida_h + saida_fast))
-gerar_relatorio(relatorio_full, grupos_full, len(saida_h + saida_fast_full))
+gerar_relatorio(relatorio_dedup, grupos_dedup, lista_dedup)
+gerar_relatorio(relatorio_full, grupos_full, lista_full)
 
 # GIT
 def git(cmd):
@@ -205,7 +234,7 @@ def git(cmd):
     print(r.stderr)
 
 git("git add -A")
-git('git commit --allow-empty -m "Super lista dual + relatórios"')
+git('git commit --allow-empty -m "Super lista dual FINAL + relatórios completos"')
 git("git push origin main")
 
 print("✅ FINALIZADO COM SUCESSO")
