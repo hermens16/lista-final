@@ -1,10 +1,10 @@
 📊 RELATÓRIO IPTV
 
-Total lido (bruto): 3017
+Total lido (bruto): 3016
 Total final: 2760
 Canais únicos: 2693
-Duplicados encontrados: 324
-Removidos (dedup): 257
+Duplicados encontrados: 323
+Removidos (dedup): 256
 
 Total grupos: 14
 
