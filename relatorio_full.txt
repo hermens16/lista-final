@@ -2,8 +2,15 @@
 
 Total lido: 3016
 Total final: 3016
+Duplicados: 323
 
-📡 POR FONTE:
+📡 POR FONTE (BRUTO):
+H -> 956
+PLUTO -> 170
+PLEX -> 384
+SAMSUNG -> 1506
+
+📡 POR FONTE (FINAL):
 H -> 956
 PLUTO -> 170
 PLEX -> 384

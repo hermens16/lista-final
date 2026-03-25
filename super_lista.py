@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL + ORDEM + POSICIONAMENTO PLUTO")
+print("🚀 SUPER LISTA FINAL DEFINITIVA")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -13,6 +13,12 @@ playlists = [
     ("PLEX", r"C:\Users\User\Dev\plex-tv\playlist_final.m3u"),
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
+
+# 🔥 canais que NÃO podem sofrer dedup
+CANAIS_PROTEGIDOS = {
+    "TV CULTURA",
+    "CANAL UOL"
+}
 
 saida_dedup = "super_lista.m3u"
 saida_full = "super_lista_full.m3u"
@@ -91,15 +97,19 @@ def ler_playlist(caminho):
             r = requests.get(caminho, timeout=20)
             return r.text.splitlines(keepends=True)
         except:
+            print(f"Erro ao baixar {caminho}")
             return []
     else:
         if not os.path.exists(caminho):
+            print(f"Arquivo não encontrado: {caminho}")
             return []
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
 # PROCESSAMENTO
 for tipo, caminho in playlists:
+
+    print(f"📂 {tipo}")
 
     linhas = ler_playlist(caminho)
     i = 0
@@ -118,42 +128,49 @@ for tipo, caminho in playlists:
             nome_norm = normalizar_nome(nome)
 
             contador_nomes[nome_norm] += 1
-            total_lidos += 1
             contador_origem_bruto[tipo] += 1
+            total_lidos += 1
 
             if tipo == "H":
-                saida_h.append((extinf, url))
+                saida_h.append((extinf, url, tipo))
                 contador_origem_final["H"] += 1
+
             else:
-                saida_fast_full.append((extinf, url))
+                saida_fast_full.append((extinf, url, tipo))
                 contador_origem_final[tipo] += 1
 
-                if nome_norm not in canais_fast_vistos:
-                    canais_fast_vistos.add(nome_norm)
-                    saida_fast.append((extinf, url))
+                # 🔥 PROTEÇÃO CONTRA DEDUP
+                if nome_norm in CANAIS_PROTEGIDOS:
+                    saida_fast.append((extinf, url, tipo))
+                else:
+                    if nome_norm not in canais_fast_vistos:
+                        canais_fast_vistos.add(nome_norm)
+                        saida_fast.append((extinf, url, tipo))
 
             i += 2
             continue
 
         i += 1
 
-# 🔥 REPOSICIONAMENTO ESPECIAL
+# 🔥 REPOSICIONAMENTO CORRETO (APENAS PLUTO)
 def reposicionar_tv_aberta(lista):
-    resultado = []
-    buffer_inserir = []
 
-    for extinf, url in lista:
+    resultado = []
+    buffer = []
+
+    for extinf, url, origem in lista:
+
         nome = normalizar_nome(extinf.split(",")[-1])
 
-        if nome in ["TV CULTURA", "CANAL UOL"]:
-            buffer_inserir.append((extinf, url))
+        if origem == "PLUTO" and nome in ["TV CULTURA", "CANAL UOL"]:
+            buffer.append((extinf, url, origem))
             continue
 
-        resultado.append((extinf, url))
+        resultado.append((extinf, url, origem))
 
         if nome == "CULTURA":
-            resultado.extend(buffer_inserir)
-            buffer_inserir.clear()
+            resultado.extend(buffer)
+            buffer.clear()
 
     return resultado
 
@@ -162,7 +179,8 @@ def montar_lista(saida_total):
 
     grupos = defaultdict(list)
 
-    for extinf, url in saida_total:
+    for extinf, url, origem in saida_total:
+
         nome = extinf.split(",")[-1].strip()
         grupo = normalizar_grupo(extrair_grupo(extinf), nome)
 
@@ -171,15 +189,14 @@ def montar_lista(saida_total):
         else:
             extinf = extinf.strip() + f' group-title="{grupo}"\n'
 
-        grupos[grupo].append((extinf, url))
+        grupos[grupo].append((extinf, url, origem))
 
-    # 🔥 aplicar reposicionamento no grupo TV ABERTA
     if "TV ABERTA" in grupos:
         grupos["TV ABERTA"] = reposicionar_tv_aberta(grupos["TV ABERTA"])
 
     return grupos
 
-# 🔥 NOVA ORDEM
+# 🔥 ORDEM CORRIGIDA
 ORDEM = [
     "TV ABERTA","EVENTOS","ESPORTES","FILMES","SÉRIES",
     "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
@@ -190,9 +207,10 @@ ORDEM = [
 def salvar(nome, grupos):
     with open(nome, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
+
         for g in ORDEM:
             if g in grupos:
-                for e,u in grupos[g]:
+                for e,u,_ in grupos[g]:
                     f.write(e)
                     f.write(u)
 
@@ -208,13 +226,22 @@ salvar(saida_full, grupos_full)
 
 # RELATÓRIO
 def gerar_relatorio(nome, grupos, lista_final):
+
+    duplicados_total = sum(qtd - 1 for qtd in contador_nomes.values() if qtd > 1)
+
     with open(nome, "w", encoding="utf-8") as f:
+
         f.write("📊 RELATÓRIO IPTV\n\n")
         f.write(f"Total lido: {total_lidos}\n")
-        f.write(f"Total final: {len(lista_final)}\n\n")
+        f.write(f"Total final: {len(lista_final)}\n")
+        f.write(f"Duplicados: {duplicados_total}\n\n")
 
-        f.write("📡 POR FONTE:\n")
+        f.write("📡 POR FONTE (BRUTO):\n")
         for k,v in contador_origem_bruto.items():
+            f.write(f"{k} -> {v}\n")
+
+        f.write("\n📡 POR FONTE (FINAL):\n")
+        for k,v in contador_origem_final.items():
             f.write(f"{k} -> {v}\n")
 
         f.write("\n📂 POR GRUPO:\n")
@@ -229,7 +256,7 @@ def git(cmd):
     subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit --allow-empty -m "Ordem + reposicionamento TV Cultura/UOL"')
+git('git commit --allow-empty -m "FINAL definitivo com proteção e reposicionamento Pluto"')
 git("git push origin main")
 
-print("✅ FINALIZADO")
+print("✅ FINALIZADO COM SUCESSO")
