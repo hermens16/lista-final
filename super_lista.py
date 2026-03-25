@@ -49,7 +49,7 @@ def extrair_grupo(extinf):
         return extinf.split('group-title="')[1].split('"')[0]
     return "VARIEDADES"
 
-# 🔥 REPOSICIONAMENTO (ÚNICA ADIÇÃO REAL)
+# 🔥 REPOSICIONAMENTO CULTURA
 def reposicionar_tv_aberta(lista):
 
     base = []
@@ -198,14 +198,15 @@ def montar_lista(saida_total):
 
         grupos[grupo].append((extinf, url, origem))
 
-    # 🔥 AQUI entra o reposicionamento (sem quebrar nada)
+    # reposiciona canais dentro de TV ABERTA
     if "TV ABERTA" in grupos:
         grupos["TV ABERTA"] = reposicionar_tv_aberta(grupos["TV ABERTA"])
 
     return grupos
 
+# 🔥 ORDEM CORRIGIDA AQUI
 ORDEM = [
-    "EVENTOS","TV ABERTA","ESPORTES","FILMES","SÉRIES",
+    "TV ABERTA","EVENTOS","ESPORTES","FILMES","SÉRIES",
     "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
     "INFANTIL","MÚSICA","NOTÍCIAS","RELIGIOSO",
     "VARIEDADES","RÁDIO","ADULTO"
@@ -230,7 +231,7 @@ grupos_full = montar_lista(lista_full)
 salvar(saida_dedup, grupos_dedup)
 salvar(saida_full, grupos_full)
 
-# RELATÓRIOS (inalterado)
+# RELATÓRIOS
 def gerar_relatorio(nome, grupos, lista_final):
 
     duplicados_total = sum(qtd - 1 for qtd in contador_nomes.values() if qtd > 1)
@@ -274,7 +275,7 @@ def git(cmd):
     print(r.stderr)
 
 git("git add -A")
-git('git commit --allow-empty -m "fix posição cultura sem quebrar lista"')
+git('git commit --allow-empty -m "ordem grupos + cultura ok"')
 git("git push origin main")
 
 print("✅ FINALIZADO COM SUCESSO")
