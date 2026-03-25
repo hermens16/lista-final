@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL + FULL + RELATÓRIOS")
+print("🚀 SUPER LISTA FINAL (CORRIGIDO DEFINITIVO)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -20,65 +20,75 @@ saida_h = []
 saida_fast = []
 saida_fast_full = []
 
-canais_fast_vistos = set()
-
+vistos = set()
 contador_nomes = Counter()
-contador_origem_bruto = defaultdict(int)
-contador_origem_final_dedup = defaultdict(int)
-contador_origem_final_full = defaultdict(int)
-
-total_lidos = 0
+contador_grupos = Counter()
 
 # NORMALIZAÇÃO
 def normalizar_nome(nome):
     nome = nome.upper().strip()
     nome = unicodedata.normalize('NFKD', nome)
     nome = nome.encode('ASCII', 'ignore').decode()
-    nome = re.sub(r'\s+', ' ', nome)
-    return nome
+    return re.sub(r'\s+', ' ', nome)
 
 def extrair_grupo(extinf):
+    m = re.search(r'group-title="([^"]+)"', extinf)
+    return m.group(1) if m else None
+
+def aplicar_grupo(extinf, grupo):
     if 'group-title="' in extinf:
-        return extinf.split('group-title="')[1].split('"')[0]
-    return "VARIEDADES"
+        return re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
+    else:
+        return extinf.replace("#EXTINF:-1", f'#EXTINF:-1 group-title="{grupo}"')
 
 def normalizar_grupo(g):
-    g = g.upper()
-    if "ABERTA" in g: return "TV ABERTA"
-    if "EVENT" in g: return "EVENTOS"
-    if "SPORT" in g: return "ESPORTES"
-    if "MOVIE" in g: return "FILMES"
-    if "SERIE" in g: return "SÉRIES"
-    if "DOC" in g: return "DOCUMENTÁRIOS"
-    if "ANIME" in g: return "ANIME & TOKUSATSU"
-    if "DESENHO" in g: return "DESENHOS 24H"
-    if "INFANT" in g: return "INFANTIL"
-    if "MUSIC" in g: return "MÚSICA"
-    if "NEWS" in g or "NOTIC" in g: return "NOTÍCIAS"
-    return "VARIEDADES"
+    if not g:
+        return "VARIEDADES"
+
+    g_upper = g.upper()
+
+    mapa = {
+        "NOTIC": "NOTÍCIAS",
+        "NEWS": "NOTÍCIAS",
+        "ABERTA": "TV ABERTA",
+        "EVENT": "EVENTOS",
+        "SPORT": "ESPORTES",
+        "FILME": "FILMES",
+        "MOVIE": "FILMES",
+        "SERIE": "SÉRIES",
+        "DOC": "DOCUMENTÁRIOS",
+        "ANIME": "ANIME & TOKUSATSU",
+        "DESENHO": "DESENHOS 24H",
+        "INFANT": "INFANTIL",
+        "MUSIC": "MÚSICA",
+        "RELIG": "RELIGIOSO"
+    }
+
+    for k, v in mapa.items():
+        if k in g_upper:
+            return v
+
+    return g.strip()  # mantém original corretamente
 
 def ler_playlist(caminho):
     try:
         if caminho.startswith("http"):
-            r = requests.get(caminho, timeout=15)
-            return r.text.splitlines()
+            return requests.get(caminho, timeout=15).text.splitlines()
         else:
             with open(caminho, encoding="utf-8", errors="ignore") as f:
                 return f.read().splitlines()
     except:
-        print(f"❌ Erro ao ler: {caminho}")
         return []
 
-# 🔥 LEITURA ROBUSTA
+# LEITURA
 for tipo, caminho in playlists:
 
-    print(f"📥 Lendo {tipo}")
     linhas = ler_playlist(caminho)
 
     i = 0
     while i < len(linhas):
 
-        if linhas[i].strip().startswith("#EXTINF"):
+        if linhas[i].startswith("#EXTINF"):
 
             extinf = linhas[i].strip()
 
@@ -91,46 +101,37 @@ for tipo, caminho in playlists:
 
             url = linhas[j].strip()
 
-            nome = extinf.split(",")[-1].strip()
-            nome_norm = normalizar_nome(nome)
+            nome = normalizar_nome(extinf.split(",")[-1])
 
-            contador_nomes[nome_norm] += 1
-            contador_origem_bruto[tipo] += 1
-            total_lidos += 1
+            contador_nomes[nome] += 1
 
             if tipo == "H":
                 saida_h.append((extinf, url, tipo))
-                contador_origem_final_dedup["H"] += 1
-                contador_origem_final_full["H"] += 1
             else:
-                # FULL
                 saida_fast_full.append((extinf, url, tipo))
-                contador_origem_final_full[tipo] += 1
 
-                # DEDUP
-                if nome_norm not in canais_fast_vistos:
-                    canais_fast_vistos.add(nome_norm)
+                if nome not in vistos:
+                    vistos.add(nome)
                     saida_fast.append((extinf, url, tipo))
-                    contador_origem_final_dedup[tipo] += 1
 
             i = j + 1
             continue
 
         i += 1
 
-# 🔥 REPOSICIONAMENTO
-def reposicionar_tv_aberta(lista):
+# REPOSICIONAR
+def reposicionar(lista):
 
     base = []
-    pluto_alvo = []
+    extras = []
 
-    for extinf, url, origem in lista:
-        nome = normalizar_nome(extinf.split(",")[-1])
+    for e, u, o in lista:
+        nome = normalizar_nome(e.split(",")[-1])
 
-        if origem == "PLUTO" and nome in ALVO_FIXO:
-            pluto_alvo.append((extinf, url, origem))
+        if o == "PLUTO" and nome in ALVO_FIXO:
+            extras.append((e, u, o))
         else:
-            base.append((extinf, url, origem))
+            base.append((e, u, o))
 
     resultado = []
     inserido = False
@@ -140,111 +141,89 @@ def reposicionar_tv_aberta(lista):
 
         nome = normalizar_nome(item[0].split(",")[-1])
 
-        if not inserido and nome == "CULTURA":
-            resultado.extend(pluto_alvo)
+        if nome == "CULTURA" and not inserido:
+            resultado.extend(extras)
             inserido = True
-
-    if not inserido and pluto_alvo:
-        resultado = pluto_alvo + resultado
 
     return resultado
 
-# AGRUPAMENTO
-def montar_lista(lista_total):
+# AGRUPAR
+def montar(lista):
 
     grupos = defaultdict(list)
 
-    for extinf, url, origem in lista_total:
+    for e, u, o in lista:
 
-        grupo = normalizar_grupo(extrair_grupo(extinf))
+        g_original = extrair_grupo(e)
+        g_final = normalizar_grupo(g_original)
 
-        if 'group-title="' in extinf:
-            extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
-        else:
-            extinf += f' group-title="{grupo}"'
+        contador_grupos[g_final] += 1
 
-        grupos[grupo].append((extinf, url, origem))
+        e = aplicar_grupo(e, g_final)
+
+        grupos[g_final].append((e, u, o))
 
     if "TV ABERTA" in grupos:
-        grupos["TV ABERTA"] = reposicionar_tv_aberta(grupos["TV ABERTA"])
+        grupos["TV ABERTA"] = reposicionar(grupos["TV ABERTA"])
 
     return grupos
 
-ORDEM = [
+ORDEM_FIXA = [
     "TV ABERTA","EVENTOS","ESPORTES","FILMES","SÉRIES",
     "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
     "INFANTIL","MÚSICA","NOTÍCIAS","RELIGIOSO","VARIEDADES"
 ]
 
-# 🔥 SALVAR (BLINDADO)
 def salvar(nome, grupos):
-
-    with open(nome, "w", encoding="utf-8", newline="\n") as f:
-
-        f.write("#EXTM3U\n")
-
-        for g in ORDEM:
-            if g in grupos:
-                for e, u, _ in grupos[g]:
-
-                    e = e.strip()
-                    u = u.strip()
-
-                    if not e.startswith("#EXTINF"):
-                        continue
-                    if "," not in e:
-                        continue
-                    if not u.startswith("http"):
-                        continue
-
-                    f.write(e + "\n")
-                    f.write(u + "\n")
-
-# 🔥 RELATÓRIO COMPLETO
-def gerar_relatorio(nome, grupos, lista_final, tipo):
-
-    duplicados_total = sum(qtd - 1 for qtd in contador_nomes.values() if qtd > 1)
 
     with open(nome, "w", encoding="utf-8") as f:
 
-        f.write("📊 RELATÓRIO IPTV\n\n")
+        f.write("#EXTM3U\n")
 
-        f.write(f"Total lido: {total_lidos}\n")
-        f.write(f"Total final: {len(lista_final)}\n")
-        f.write(f"Duplicados removidos: {duplicados_total}\n\n")
+        # primeiro ordem fixa
+        for g in ORDEM_FIXA:
+            if g in grupos:
+                for e, u, _ in grupos[g]:
+                    f.write(e + "\n")
+                    f.write(u + "\n")
 
-        f.write("📡 POR FONTE (BRUTO):\n")
-        for k,v in contador_origem_bruto.items():
-            f.write(f"{k} -> {v}\n")
-
-        f.write("\n📡 POR FONTE (FINAL):\n")
-
-        origem = contador_origem_final_dedup if tipo == "DEDUP" else contador_origem_final_full
-
-        for k,v in origem.items():
-            f.write(f"{k} -> {v}\n")
-
-        f.write("\n📂 POR GRUPO:\n")
+        # depois TODOS os outros grupos
         for g in grupos:
-            f.write(f"{g} -> {len(grupos[g])}\n")
+            if g not in ORDEM_FIXA:
+                for e, u, _ in grupos[g]:
+                    f.write(e + "\n")
+                    f.write(u + "\n")
 
-# 🔥 GERAR LISTAS
+# RELATÓRIO
+def relatorio(nome, lista):
+
+    duplicados = sum(v-1 for v in contador_nomes.values() if v > 1)
+
+    with open(nome, "w", encoding="utf-8") as f:
+
+        f.write("RELATORIO IPTV\n\n")
+        f.write(f"Total canais: {len(lista)}\n")
+        f.write(f"Duplicados removidos: {duplicados}\n\n")
+
+        f.write("CANAIS POR GRUPO:\n")
+        for g, qtd in contador_grupos.items():
+            f.write(f"{g}: {qtd}\n")
+
+# GERAR
 lista_dedup = saida_h + saida_fast
 lista_full = saida_h + saida_fast_full
 
-grupos_dedup = montar_lista(lista_dedup)
-grupos_full = montar_lista(lista_full)
+g1 = montar(lista_dedup)
+g2 = montar(lista_full)
 
-salvar("super_lista.m3u", grupos_dedup)
-salvar("super_lista_full.m3u", grupos_full)
+salvar("super_lista.m3u", g1)
+salvar("super_lista_full.m3u", g2)
 
-# RELATÓRIOS
-gerar_relatorio("relatorio_dedup.txt", grupos_dedup, lista_dedup, "DEDUP")
-gerar_relatorio("relatorio_full.txt", grupos_full, lista_full, "FULL")
+relatorio("relatorio.txt", lista_dedup)
 
 # GIT
-subprocess.run("git add -A", shell=True)
-subprocess.run('git commit -m "final completo com relatorios"', shell=True)
+subprocess.run("git add .", shell=True)
+subprocess.run('git commit -m "fix grupos + relatorio"', shell=True)
 subprocess.run("git push", shell=True)
 
-print("✅ LISTAS + RELATÓRIOS GERADOS COM SUCESSO")
+print("✅ AGORA SIM: TUDO CORRIGIDO")
