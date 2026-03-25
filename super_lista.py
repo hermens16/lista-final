@@ -1,13 +1,12 @@
 import os
-from collections import defaultdict
+from collections import defaultdict, Counter
 import subprocess
 import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA (H VIA GITHUB + FAST CONTROLADO)")
+print("🚀 SUPER LISTA DUPLA + RELATÓRIOS")
 
-# 🔥 PLAYLISTS (H AGORA VIA GITHUB)
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
     ("PLUTO", r"C:\Users\User\Dev\pluto-tv\pluto_br_final.m3u8"),
@@ -15,18 +14,22 @@ playlists = [
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
 
-saida_arquivo = "super_lista.m3u"
+# arquivos
+saida_dedup = "super_lista.m3u"
+saida_full = "super_lista_full.m3u"
 
-# 🔥 separação
+relatorio_dedup = "relatorio_dedup.txt"
+relatorio_full = "relatorio_full.txt"
+
+# estruturas
 saida_h = []
 saida_fast = []
+saida_fast_full = []
 
 canais_fast_vistos = set()
+contador_nomes = Counter()
 
-total_lidos = 0
-total_final = 0
-
-# 🧠 NORMALIZAÇÃO
+# NORMALIZAÇÃO
 def normalizar_nome(nome):
     nome = nome.upper().strip()
     nome = unicodedata.normalize('NFKD', nome)
@@ -41,6 +44,9 @@ def extrair_grupo(extinf):
 
 def normalizar_grupo(grupo):
     g = grupo.strip().upper()
+
+    if "NEWS" in g or "NOTIC" in g:
+        return "NOTÍCIAS"  # 🔥 prioridade máxima
 
     if "EVENT" in g:
         return "EVENTOS"
@@ -62,8 +68,6 @@ def normalizar_grupo(grupo):
         return "INFANTIL"
     if "MUSIC" in g or "MÚSICA" in g:
         return "MÚSICA"
-    if "NEWS" in g or "NOTIC" in g:
-        return "NOTÍCIAS"
     if "RELIG" in g:
         return "RELIGIOSO"
     if "RADIO" in g:
@@ -77,27 +81,21 @@ def canal_valido(nome):
     lixo = ["INFORMACOES EM BREVE", "EM BREVE", ""]
     return nome not in lixo
 
-# 🔥 FUNÇÃO UNIVERSAL DE LEITURA (LOCAL + URL)
 def ler_playlist(caminho):
     if caminho.startswith("http"):
         try:
-            response = requests.get(caminho, timeout=20)
-            response.raise_for_status()
-            return response.text.splitlines(keepends=True)
-        except Exception as e:
-            print(f"❌ Erro ao baixar {caminho}: {e}")
+            r = requests.get(caminho, timeout=20)
+            return r.text.splitlines(keepends=True)
+        except:
             return []
     else:
         if not os.path.exists(caminho):
-            print(f"⚠️ Não encontrado: {caminho}")
             return []
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
-# 🔥 PROCESSAMENTO
+# PROCESSAMENTO
 for tipo, caminho in playlists:
-
-    print(f"📂 Processando: {tipo}")
 
     linhas = ler_playlist(caminho)
     i = 0
@@ -112,101 +110,102 @@ for tipo, caminho in playlists:
             extinf = linhas[i]
             url = linhas[i+1]
 
-            nome_original = extinf.split(",")[-1].strip()
-            nome_norm = normalizar_nome(nome_original)
+            nome = extinf.split(",")[-1].strip()
+            nome_norm = normalizar_nome(nome)
 
-            total_lidos += 1
+            contador_nomes[nome_norm] += 1
 
-            # 🟢 H = NÃO REMOVE NADA
+            # H
             if tipo == "H":
                 saida_h.append((extinf, url))
-                total_final += 1
 
-            # 🔵 FAST (Pluto, Plex, Samsung)
             else:
                 if not canal_valido(nome_norm):
                     i += 2
                     continue
 
+                # FULL (sem dedup)
+                saida_fast_full.append((extinf, url))
+
+                # DEDUP
                 if nome_norm not in canais_fast_vistos:
                     canais_fast_vistos.add(nome_norm)
                     saida_fast.append((extinf, url))
-                    total_final += 1
 
             i += 2
             continue
 
         i += 1
 
-# 🔥 ORDEM GARANTIDA
-saida_temp = saida_h + saida_fast
+# FUNÇÃO DE AGRUPAMENTO
+def montar_lista(saida_total):
 
-# 🎯 AGRUPAR
-grupos = defaultdict(list)
+    grupos = defaultdict(list)
 
-for extinf, url in saida_temp:
+    for extinf, url in saida_total:
 
-    grupo_original = extrair_grupo(extinf)
-    grupo = normalizar_grupo(grupo_original)
+        grupo = normalizar_grupo(extrair_grupo(extinf))
 
-    # 🔥 NÃO QUEBRA EXTINF
-    if 'group-title="' in extinf:
-        extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
-    else:
-        extinf = extinf.strip() + f' group-title="{grupo}"\n'
+        if 'group-title="' in extinf:
+            extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
+        else:
+            extinf = extinf.strip() + f' group-title="{grupo}"\n'
 
-    grupos[grupo].append((extinf, url))
+        grupos[grupo].append((extinf, url))
 
-# 📊 ORDEM FINAL
-ORDEM_GRUPOS = [
-    "EVENTOS",
-    "TV ABERTA",
-    "ESPORTES",
-    "FILMES",
-    "SÉRIES",
-    "DOCUMENTÁRIOS",
-    "ANIME & TOKUSATSU",
-    "DESENHOS 24H",
-    "INFANTIL",
-    "MÚSICA",
-    "NOTÍCIAS",
-    "RELIGIOSO",
-    "VARIEDADES",
-    "RÁDIO",
-    "ADULTO"
+    return grupos
+
+ORDEM = [
+    "EVENTOS","TV ABERTA","ESPORTES","FILMES","SÉRIES",
+    "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
+    "INFANTIL","MÚSICA","NOTÍCIAS","RELIGIOSO",
+    "VARIEDADES","RÁDIO","ADULTO"
 ]
 
-# 💾 SALVAR
-with open(saida_arquivo, "w", encoding="utf-8") as f:
-    f.write("#EXTM3U\n")
+def salvar(nome_arquivo, grupos):
+    with open(nome_arquivo, "w", encoding="utf-8") as f:
+        f.write("#EXTM3U\n")
 
-    for grupo in ORDEM_GRUPOS:
-        if grupo in grupos:
-            for extinf, url in grupos[grupo]:
-                f.write(extinf)
-                f.write(url)
+        for g in ORDEM:
+            if g in grupos:
+                for e,u in grupos[g]:
+                    f.write(e)
+                    f.write(u)
 
-    # fallback
-    for grupo in grupos:
-        if grupo not in ORDEM_GRUPOS:
-            for extinf, url in grupos[grupo]:
-                f.write(extinf)
-                f.write(url)
+# LISTAS
+grupos_dedup = montar_lista(saida_h + saida_fast)
+grupos_full = montar_lista(saida_h + saida_fast_full)
 
-# 🔥 GIT PUSH COM LOG
+salvar(saida_dedup, grupos_dedup)
+salvar(saida_full, grupos_full)
+
+# RELATÓRIOS
+def gerar_relatorio(nome, grupos, total):
+    with open(nome, "w", encoding="utf-8") as f:
+        f.write("📊 RELATÓRIO IPTV\n\n")
+        f.write(f"Total canais: {total}\n")
+        f.write(f"Total grupos: {len(grupos)}\n\n")
+
+        f.write("📂 CANAIS POR GRUPO:\n")
+        for g in grupos:
+            f.write(f"{g} -> {len(grupos[g])}\n")
+
+        f.write("\n🔁 DUPLICADOS (TOP 20):\n")
+        for nome, qtd in contador_nomes.most_common(20):
+            if qtd > 1:
+                f.write(f"{nome} -> {qtd}\n")
+
+gerar_relatorio(relatorio_dedup, grupos_dedup, len(saida_h + saida_fast))
+gerar_relatorio(relatorio_full, grupos_full, len(saida_h + saida_fast_full))
+
+# GIT
 def git(cmd):
     r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     print(r.stdout)
     print(r.stderr)
 
-try:
-    git("git add -A")
-    git('git commit --allow-empty -m "Super lista auto update (H via GitHub + FAST dedup)"')
-    git("git push origin main")
-except Exception as e:
-    print(f"❌ Erro no git: {e}")
+git("git add -A")
+git('git commit --allow-empty -m "Super lista dual + relatórios"')
+git("git push origin main")
 
-print("\n📊 RELATÓRIO FINAL:")
-print(f"➡️ Canais lidos: {total_lidos}")
-print(f"➡️ Canais finais: {total_final}")
-print(f"➡️ Removidos (apenas FAST): {total_lidos - total_final}")
+print("✅ FINALIZADO COM SUCESSO")
