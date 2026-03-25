@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL (POSIÇÃO EXATA CULTURA)")
+print("🚀 SUPER LISTA FINAL + FULL")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -21,8 +21,8 @@ saida_fast = []
 saida_fast_full = []
 
 canais_fast_vistos = set()
-contador_nomes = Counter()
 
+# NORMALIZAÇÃO
 def normalizar_nome(nome):
     nome = nome.upper().strip()
     nome = unicodedata.normalize('NFKD', nome)
@@ -80,13 +80,13 @@ for tipo, caminho in playlists:
             nome = extinf.split(",")[-1].strip()
             nome_norm = normalizar_nome(nome)
 
-            contador_nomes[nome_norm] += 1
-
             if tipo == "H":
                 saida_h.append((extinf, url, tipo))
             else:
+                # FULL (sem dedup)
                 saida_fast_full.append((extinf, url, tipo))
 
+                # DEDUP
                 if nome_norm not in canais_fast_vistos:
                     canais_fast_vistos.add(nome_norm)
                     saida_fast.append((extinf, url, tipo))
@@ -96,13 +96,12 @@ for tipo, caminho in playlists:
 
         i += 1
 
-# 🔥 REPOSICIONAMENTO CORRETO
+# 🔥 REPOSICIONAMENTO CULTURA
 def reposicionar_tv_aberta(lista):
 
     base = []
     pluto_alvo = []
 
-    # separa os canais
     for extinf, url, origem in lista:
         nome = normalizar_nome(extinf.split(",")[-1])
 
@@ -119,14 +118,11 @@ def reposicionar_tv_aberta(lista):
 
         nome = normalizar_nome(item[0].split(",")[-1])
 
-        # 🔥 ponto EXATO
         if not inserido and nome == "CULTURA":
             resultado.extend(pluto_alvo)
             inserido = True
 
-    # fallback
     if not inserido and pluto_alvo:
-        print("⚠️ CULTURA não encontrada, inserindo no topo")
         resultado = pluto_alvo + resultado
 
     return resultado
@@ -139,7 +135,6 @@ def montar_lista(saida_total):
     for extinf, url, origem in saida_total:
 
         grupo = normalizar_grupo(extrair_grupo(extinf))
-
         extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
 
         grupos[grupo].append((extinf, url, origem))
@@ -164,15 +159,20 @@ def salvar(nome, grupos):
                     f.write(e)
                     f.write(u)
 
-# GERAR
-lista_final = saida_h + saida_fast
-grupos = montar_lista(lista_final)
+# 🔥 GERAR AS DUAS LISTAS
 
-salvar("super_lista.m3u", grupos)
+lista_dedup = saida_h + saida_fast
+lista_full = saida_h + saida_fast_full
+
+grupos_dedup = montar_lista(lista_dedup)
+grupos_full = montar_lista(lista_full)
+
+salvar("super_lista.m3u", grupos_dedup)
+salvar("super_lista_full.m3u", grupos_full)
 
 # GIT
 subprocess.run("git add -A", shell=True)
-subprocess.run('git commit -m "fix cultura posição exata"', shell=True)
+subprocess.run('git commit -m "gera lista dedup + full corrigido"', shell=True)
 subprocess.run("git push", shell=True)
 
-print("✅ FINALIZADO COM SUCESSO")
+print("✅ GEROU: super_lista.m3u + super_lista_full.m3u")
