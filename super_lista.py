@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL (CORRIGIDA DE VERDADE)")
+print("🚀 SUPER LISTA FINAL + AUDITORIA POR FONTE")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -31,6 +31,10 @@ contador_nomes = Counter()
 
 total_lidos = 0
 
+# 🔥 CONTROLE POR FONTE
+contador_origem_bruto = defaultdict(int)
+contador_origem_final = defaultdict(int)
+
 # NORMALIZAÇÃO
 def normalizar_nome(nome):
     nome = nome.upper().strip()
@@ -44,22 +48,19 @@ def extrair_grupo(extinf):
         return extinf.split('group-title="')[1].split('"')[0]
     return "VARIEDADES"
 
-# 🔥 CORREÇÃO DEFINITIVA NOTÍCIAS
+# NOTÍCIAS INTELIGENTE
 def normalizar_grupo(grupo, nome_canal):
 
-    g = grupo.strip().upper()
+    g = grupo.upper()
     n = nome_canal.upper()
 
-    # 🔴 PRIORIDADE MÁXIMA: NOME
     if any(x in n for x in [
-        "CNN", "GLOBO NEWS", "GLOBONEWS", "BLOOMBERG",
-        "RECORD NEWS", "BAND NEWS", "JP NEWS",
-        "JOVEM PAN NEWS", "NEWS"
+        "CNN","GLOBO NEWS","GLOBONEWS","BLOOMBERG",
+        "RECORD NEWS","BAND NEWS","JP NEWS","JOVEM PAN NEWS","NEWS"
     ]):
         return "NOTÍCIAS"
 
-    # 🟡 SEGUNDA CAMADA: GRUPO
-    if any(x in g for x in ["NEWS", "NOTIC", "JORNAL"]):
+    if any(x in g for x in ["NEWS","NOTIC","JORNAL"]):
         return "NOTÍCIAS"
 
     if "EVENT" in g:
@@ -70,7 +71,7 @@ def normalizar_grupo(grupo, nome_canal):
         return "ESPORTES"
     if "MOVIE" in g or "FILME" in g:
         return "FILMES"
-    if any(x in g for x in ["SERIE", "SÉRIE", "DRAMA", "COMED"]):
+    if any(x in g for x in ["SERIE","SÉRIE","DRAMA","COMED"]):
         return "SÉRIES"
     if "DOC" in g:
         return "DOCUMENTÁRIOS"
@@ -90,10 +91,6 @@ def normalizar_grupo(grupo, nome_canal):
         return "ADULTO"
 
     return "VARIEDADES"
-
-# 🔥 NÃO REMOVE MAIS NADA
-def canal_valido(nome):
-    return True
 
 def ler_playlist(caminho):
     if caminho.startswith("http"):
@@ -128,23 +125,20 @@ for tipo, caminho in playlists:
             extinf = linhas[i]
             url = linhas[i+1]
 
-            nome = extinf.split(",")[-1].strip()
-
-            if not nome:
-                nome = "SEM NOME"
-
+            nome = extinf.split(",")[-1].strip() or "SEM NOME"
             nome_norm = normalizar_nome(nome)
 
             contador_nomes[nome_norm] += 1
             total_lidos += 1
+            contador_origem_bruto[tipo] += 1
 
-            # 🟢 H intacta
             if tipo == "H":
                 saida_h.append((extinf, url))
+                contador_origem_final["H"] += 1
 
-            # 🔵 FAST
             else:
                 saida_fast_full.append((extinf, url))
+                contador_origem_final[tipo] += 1
 
                 if nome_norm not in canais_fast_vistos:
                     canais_fast_vistos.add(nome_norm)
@@ -157,13 +151,11 @@ for tipo, caminho in playlists:
 
 # AGRUPAMENTO
 def montar_lista(saida_total):
-
     grupos = defaultdict(list)
 
     for extinf, url in saida_total:
-
-        nome_canal = extinf.split(",")[-1].strip()
-        grupo = normalizar_grupo(extrair_grupo(extinf), nome_canal)
+        nome = extinf.split(",")[-1].strip()
+        grupo = normalizar_grupo(extrair_grupo(extinf), nome)
 
         if 'group-title="' in extinf:
             extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
@@ -181,10 +173,9 @@ ORDEM = [
     "VARIEDADES","RÁDIO","ADULTO"
 ]
 
-def salvar(nome_arquivo, grupos):
-    with open(nome_arquivo, "w", encoding="utf-8") as f:
+def salvar(nome, grupos):
+    with open(nome, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
-
         for g in ORDEM:
             if g in grupos:
                 for e,u in grupos[g]:
@@ -218,9 +209,15 @@ def gerar_relatorio(nome, grupos, lista_final):
         f.write(f"Duplicados encontrados: {duplicados_total}\n")
         f.write(f"Removidos (dedup): {total_lidos - total_final}\n\n")
 
-        f.write(f"Total grupos: {len(grupos)}\n\n")
+        f.write("📡 CANAIS POR FONTE (BRUTO):\n")
+        for k,v in contador_origem_bruto.items():
+            f.write(f"{k} -> {v}\n")
 
-        f.write("📂 CANAIS POR GRUPO:\n")
+        f.write("\n📡 CANAIS POR FONTE (FINAL):\n")
+        for k,v in contador_origem_final.items():
+            f.write(f"{k} -> {v}\n")
+
+        f.write("\n📂 CANAIS POR GRUPO:\n")
         for g in sorted(grupos):
             f.write(f"{g} -> {len(grupos[g])}\n")
 
@@ -239,7 +236,7 @@ def git(cmd):
     print(r.stderr)
 
 git("git add -A")
-git('git commit --allow-empty -m "Super lista FINAL corrigida (noticias + contagem real)"')
+git('git commit --allow-empty -m "Super lista FINAL + auditoria por fonte"')
 git("git push origin main")
 
 print("✅ FINALIZADO COM SUCESSO")

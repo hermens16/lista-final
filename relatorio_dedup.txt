@@ -6,7 +6,17 @@ Canais únicos: 2693
 Duplicados encontrados: 323
 Removidos (dedup): 256
 
-Total grupos: 14
+📡 CANAIS POR FONTE (BRUTO):
+H -> 956
+PLUTO -> 170
+PLEX -> 384
+SAMSUNG -> 1506
+
+📡 CANAIS POR FONTE (FINAL):
+H -> 956
+PLUTO -> 170
+PLEX -> 384
+SAMSUNG -> 1506
 
 📂 CANAIS POR GRUPO:
 ADULTO -> 64
