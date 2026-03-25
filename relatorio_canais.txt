@@ -1,80 +1,80 @@
 📊 RELATÓRIO IPTV
 
-Total de canais: 3189
+Total de canais: 2749
 Total de grupos: 13
 
 📂 CANAIS POR GRUPO:
-VARIEDADES -> 838
-SÉRIES -> 502
-ESPORTES -> 406
-FILMES -> 310
-DOCUMENTÁRIOS -> 295
-INFANTIL -> 177
+VARIEDADES -> 721
+SÉRIES -> 436
+ESPORTES -> 338
+FILMES -> 278
+DOCUMENTÁRIOS -> 209
 DESENHOS 24H -> 162
-MÚSICA -> 147
-TV ABERTA -> 136
-ANIME & TOKUSATSU -> 65
+MÚSICA -> 142
+TV ABERTA -> 137
+INFANTIL -> 130
 ADULTO -> 64
-RELIGIOSO -> 60
+RELIGIOSO -> 62
+ANIME & TOKUSATSU -> 43
 EVENTOS -> 27
 
 🔁 DUPLICADOS EXATOS (TOP 20):
-INFORMAÇÕES EM BREVE -> 20
-WORLD POKER TOUR -> 5
-NARUTO -> 5
-BEYBLADE -> 5
-POKÉMON -> 5
-FIFA+ -> 4
-MR. BEAN -> 4
-NARUTO SHIPPUDEN -> 4
-PFL MMA -> 3
-SFT COMBAT -> 3
-FUEL TV -> 3
-SPORTSGRID -> 3
-BILLIARD TV -> 3
-WAYPOINT TV -> 3
-CRICKET GOLD -> 3
-THE BOAT SHOW -> 3
-DOCUMENTARY+ -> 3
-TURBO -> 3
-MOVIESPHERE -> 3
-MYTIME MOVIE NETWORK -> 3
+INFORMAÇÕES EM BREVE -> 26
+MR. BEAN -> 3
+NARUTO -> 3
+NARUTO SHIPPUDEN -> 3
+BORUTO: NARUTO NEXT GENERATIONS -> 3
+TV DIFUSORA SÃO LUÍS - MA -> 2
+TV PAMPA - RS -> 2
+MOVIESPHERE -> 2
+MYTIME MOVIE NETWORK -> 2
+RUNTIME -> 2
+RUNTIME ROMANCE -> 2
+RUNTIME AÇÃO -> 2
+RUNTIME COMÉDIA -> 2
+RUNTIME CRIME -> 2
+RUNTIME FAMÍLIA -> 2
+CHAVES -> 2
+COCORICÓ -> 2
+CSI: MIAMI -> 2
+ICARLY -> 2
+MACGYVER -> 2
 
 🧠 DUPLICADOS NORMALIZADOS (TOP 20):
- -> 31
-INFORMAES EM BREVE -> 20
-TV -> 16
-SBS -> 15
-TVN -> 14
-MBC -> 12
-JTBC -> 11
-WORLD POKER TOUR -> 5
-KBS -> 5
-MBN -> 5
-NARUTO -> 5
-BEYBLADE -> 5
-POKMON -> 5
-YUGIOH -> 5
-FIFA -> 4
-MR BEAN -> 4
-NARUTO SHIPPUDEN -> 4
-BLOOMBERG TV -> 4
-PFL MMA -> 3
-SFT COMBAT -> 3
+INFORMAES EM BREVE -> 26
+TV -> 4
+JTBC -> 3
+MR BEAN -> 3
+TVN -> 3
+ -> 3
+NARUTO -> 3
+NARUTO SHIPPUDEN -> 3
+BORUTO NARUTO NEXT GENERATIONS -> 3
+YUGIOH -> 3
+BLOOMBERG TV -> 3
+RECORD SP -> 2
+TV DIFUSORA SO LUS MA -> 2
+TV PAMPA RS -> 2
+SPORT TV -> 2
+BEIN SPORTS XTRA -> 2
+MOVIESPHERE -> 2
+MYTIME MOVIE NETWORK -> 2
+RUNTIME -> 2
+RUNTIME ROMANCE -> 2
 
 🌐 TOP SERVIDORES:
-jmp2.uk -> 1497
-lmdns.online:80 -> 653
-epg.provider.plex.tv -> 257
-service-stitcher.clusters.pluto.tv -> 185
+jmp2.uk -> 1275
+lmdns.online:80 -> 657
+epg.provider.plex.tv -> 237
 cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv -> 170
-stream.ads.ottera.tv -> 22
+stream.ads.ottera.tv -> 21
 video01.soultv.com.br -> 17
-cdn-uw2-prod.tsv2.amagi.tv -> 11
 video01.logicahost.com.br -> 10
+cdn-uw2-prod.tsv2.amagi.tv -> 10
 video04.logicahost.com.br -> 9
 stmv1.srvif.com -> 9
 video03.logicahost.com.br -> 8
 w1.manasat.com -> 8
 video01.kshost.com.br -> 8
 video07.logicahost.com.br -> 7
+alanza.iptv2022.com -> 7
