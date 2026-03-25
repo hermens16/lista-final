@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL + AUDITORIA POR FONTE")
+print("🚀 SUPER LISTA FINAL + ORDEM + POSICIONAMENTO PLUTO")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -14,14 +14,12 @@ playlists = [
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
 
-# arquivos
 saida_dedup = "super_lista.m3u"
 saida_full = "super_lista_full.m3u"
 
 relatorio_dedup = "relatorio_dedup.txt"
 relatorio_full = "relatorio_full.txt"
 
-# estruturas
 saida_h = []
 saida_fast = []
 saida_fast_full = []
@@ -29,11 +27,10 @@ saida_fast_full = []
 canais_fast_vistos = set()
 contador_nomes = Counter()
 
-total_lidos = 0
-
-# 🔥 CONTROLE POR FONTE
 contador_origem_bruto = defaultdict(int)
 contador_origem_final = defaultdict(int)
+
+total_lidos = 0
 
 # NORMALIZAÇÃO
 def normalizar_nome(nome):
@@ -48,16 +45,12 @@ def extrair_grupo(extinf):
         return extinf.split('group-title="')[1].split('"')[0]
     return "VARIEDADES"
 
-# NOTÍCIAS INTELIGENTE
 def normalizar_grupo(grupo, nome_canal):
-
     g = grupo.upper()
     n = nome_canal.upper()
 
-    if any(x in n for x in [
-        "CNN","GLOBO NEWS","GLOBONEWS","BLOOMBERG",
-        "RECORD NEWS","BAND NEWS","JP NEWS","JOVEM PAN NEWS","NEWS"
-    ]):
+    if any(x in n for x in ["CNN","GLOBO NEWS","GLOBONEWS","BLOOMBERG",
+                           "RECORD NEWS","BAND NEWS","JP NEWS","JOVEM PAN NEWS","NEWS"]):
         return "NOTÍCIAS"
 
     if any(x in g for x in ["NEWS","NOTIC","JORNAL"]):
@@ -98,19 +91,15 @@ def ler_playlist(caminho):
             r = requests.get(caminho, timeout=20)
             return r.text.splitlines(keepends=True)
         except:
-            print(f"❌ Erro ao baixar: {caminho}")
             return []
     else:
         if not os.path.exists(caminho):
-            print(f"⚠️ Não encontrado: {caminho}")
             return []
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
 # PROCESSAMENTO
 for tipo, caminho in playlists:
-
-    print(f"📂 Processando: {tipo}")
 
     linhas = ler_playlist(caminho)
     i = 0
@@ -135,7 +124,6 @@ for tipo, caminho in playlists:
             if tipo == "H":
                 saida_h.append((extinf, url))
                 contador_origem_final["H"] += 1
-
             else:
                 saida_fast_full.append((extinf, url))
                 contador_origem_final[tipo] += 1
@@ -149,8 +137,29 @@ for tipo, caminho in playlists:
 
         i += 1
 
+# 🔥 REPOSICIONAMENTO ESPECIAL
+def reposicionar_tv_aberta(lista):
+    resultado = []
+    buffer_inserir = []
+
+    for extinf, url in lista:
+        nome = normalizar_nome(extinf.split(",")[-1])
+
+        if nome in ["TV CULTURA", "CANAL UOL"]:
+            buffer_inserir.append((extinf, url))
+            continue
+
+        resultado.append((extinf, url))
+
+        if nome == "CULTURA":
+            resultado.extend(buffer_inserir)
+            buffer_inserir.clear()
+
+    return resultado
+
 # AGRUPAMENTO
 def montar_lista(saida_total):
+
     grupos = defaultdict(list)
 
     for extinf, url in saida_total:
@@ -164,10 +173,15 @@ def montar_lista(saida_total):
 
         grupos[grupo].append((extinf, url))
 
+    # 🔥 aplicar reposicionamento no grupo TV ABERTA
+    if "TV ABERTA" in grupos:
+        grupos["TV ABERTA"] = reposicionar_tv_aberta(grupos["TV ABERTA"])
+
     return grupos
 
+# 🔥 NOVA ORDEM
 ORDEM = [
-    "EVENTOS","TV ABERTA","ESPORTES","FILMES","SÉRIES",
+    "TV ABERTA","EVENTOS","ESPORTES","FILMES","SÉRIES",
     "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
     "INFANTIL","MÚSICA","NOTÍCIAS","RELIGIOSO",
     "VARIEDADES","RÁDIO","ADULTO"
@@ -192,51 +206,30 @@ grupos_full = montar_lista(lista_full)
 salvar(saida_dedup, grupos_dedup)
 salvar(saida_full, grupos_full)
 
-# RELATÓRIO COMPLETO
+# RELATÓRIO
 def gerar_relatorio(nome, grupos, lista_final):
-
-    duplicados_total = sum(qtd - 1 for qtd in contador_nomes.values() if qtd > 1)
-    canais_unicos = len(contador_nomes)
-    total_final = len(lista_final)
-
     with open(nome, "w", encoding="utf-8") as f:
-
         f.write("📊 RELATÓRIO IPTV\n\n")
+        f.write(f"Total lido: {total_lidos}\n")
+        f.write(f"Total final: {len(lista_final)}\n\n")
 
-        f.write(f"Total lido (bruto): {total_lidos}\n")
-        f.write(f"Total final: {total_final}\n")
-        f.write(f"Canais únicos: {canais_unicos}\n")
-        f.write(f"Duplicados encontrados: {duplicados_total}\n")
-        f.write(f"Removidos (dedup): {total_lidos - total_final}\n\n")
-
-        f.write("📡 CANAIS POR FONTE (BRUTO):\n")
+        f.write("📡 POR FONTE:\n")
         for k,v in contador_origem_bruto.items():
             f.write(f"{k} -> {v}\n")
 
-        f.write("\n📡 CANAIS POR FONTE (FINAL):\n")
-        for k,v in contador_origem_final.items():
-            f.write(f"{k} -> {v}\n")
-
-        f.write("\n📂 CANAIS POR GRUPO:\n")
-        for g in sorted(grupos):
+        f.write("\n📂 POR GRUPO:\n")
+        for g in grupos:
             f.write(f"{g} -> {len(grupos[g])}\n")
-
-        f.write("\n🔁 DUPLICADOS (TOP 20):\n")
-        for nome_canal, qtd in contador_nomes.most_common(20):
-            if qtd > 1:
-                f.write(f"{nome_canal} -> {qtd}\n")
 
 gerar_relatorio(relatorio_dedup, grupos_dedup, lista_dedup)
 gerar_relatorio(relatorio_full, grupos_full, lista_full)
 
 # GIT
 def git(cmd):
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    print(r.stdout)
-    print(r.stderr)
+    subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit --allow-empty -m "Super lista FINAL + auditoria por fonte"')
+git('git commit --allow-empty -m "Ordem + reposicionamento TV Cultura/UOL"')
 git("git push origin main")
 
-print("✅ FINALIZADO COM SUCESSO")
+print("✅ FINALIZADO")
