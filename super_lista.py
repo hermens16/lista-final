@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL DEFINITIVA")
+print("🚀 SUPER LISTA FINAL DEFINITIVA (COM PARSER CORRIGIDO)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -14,7 +14,6 @@ playlists = [
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
 
-# 🔥 canais que NÃO podem sofrer dedup
 CANAIS_PROTEGIDOS = {
     "TV CULTURA",
     "CANAL UOL"
@@ -95,7 +94,7 @@ def ler_playlist(caminho):
     if caminho.startswith("http"):
         try:
             r = requests.get(caminho, timeout=20)
-            return r.text.splitlines(keepends=True)
+            return r.text.splitlines()
         except:
             print(f"Erro ao baixar {caminho}")
             return []
@@ -104,9 +103,9 @@ def ler_playlist(caminho):
             print(f"Arquivo não encontrado: {caminho}")
             return []
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
-            return f.readlines()
+            return f.read().splitlines()
 
-# PROCESSAMENTO
+# PROCESSAMENTO (🔥 PARSER CORRIGIDO)
 for tipo, caminho in playlists:
 
     print(f"📂 {tipo}")
@@ -116,13 +115,22 @@ for tipo, caminho in playlists:
 
     while i < len(linhas):
 
-        if linhas[i].startswith("#EXTINF"):
+        linha = linhas[i].strip()
 
-            if i + 1 >= len(linhas):
+        if linha.startswith("#EXTINF"):
+
+            extinf = linha + "\n"
+
+            j = i + 1
+
+            # pular linhas vazias
+            while j < len(linhas) and not linhas[j].strip():
+                j += 1
+
+            if j >= len(linhas):
                 break
 
-            extinf = linhas[i]
-            url = linhas[i+1]
+            url = linhas[j].strip() + "\n"
 
             nome = extinf.split(",")[-1].strip() or "SEM NOME"
             nome_norm = normalizar_nome(nome)
@@ -139,7 +147,6 @@ for tipo, caminho in playlists:
                 saida_fast_full.append((extinf, url, tipo))
                 contador_origem_final[tipo] += 1
 
-                # 🔥 PROTEÇÃO CONTRA DEDUP
                 if nome_norm in CANAIS_PROTEGIDOS:
                     saida_fast.append((extinf, url, tipo))
                 else:
@@ -147,12 +154,12 @@ for tipo, caminho in playlists:
                         canais_fast_vistos.add(nome_norm)
                         saida_fast.append((extinf, url, tipo))
 
-            i += 2
+            i = j + 1
             continue
 
         i += 1
 
-# 🔥 REPOSICIONAMENTO CORRETO (APENAS PLUTO)
+# 🔥 REPOSICIONAMENTO
 def reposicionar_tv_aberta(lista):
 
     resultado = []
@@ -196,7 +203,6 @@ def montar_lista(saida_total):
 
     return grupos
 
-# 🔥 ORDEM CORRIGIDA
 ORDEM = [
     "TV ABERTA","EVENTOS","ESPORTES","FILMES","SÉRIES",
     "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
@@ -207,7 +213,6 @@ ORDEM = [
 def salvar(nome, grupos):
     with open(nome, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
-
         for g in ORDEM:
             if g in grupos:
                 for e,u,_ in grupos[g]:
@@ -256,7 +261,7 @@ def git(cmd):
     subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit --allow-empty -m "FINAL definitivo com proteção e reposicionamento Pluto"')
+git('git commit --allow-empty -m "FINAL parser corrigido + Pluto funcionando"')
 git("git push origin main")
 
 print("✅ FINALIZADO COM SUCESSO")

@@ -1075,7 +1075,7 @@ https://cc-hqw8u5r1nshjc.akamaized.net/scheduler/scheduleMaster/352.m3u8
 https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00353-lionsgatestudio-moviespherebrazil-runtimelatam/playlist.m3u8
 #EXTINF:-1 tvg-logo="https://i.imgur.com/Fvg43uJ.png" group-title="FILMES",MYTIME MOVIE NETWORK
 https://appletree-mytime-samsungbrazil.amagi.tv/playlist.m3u8
-#EXTINF:-1 tvg-logo="https://i.imgur.com/4c7bwSN.png" group-title="FILMES",RUNTIME 
+#EXTINF:-1 tvg-logo="https://i.imgur.com/4c7bwSN.png" group-title="FILMES",RUNTIME
 https://stream.ads.ottera.tv/playlist.m3u8?network_id=2153
 #EXTINF:-1 tvg-id="linear/runtime-romance-0" tvg-logo="https://i.imgur.com/4c7bwSN.png" group-title="FILMES",RUNTIME ROMANCE
 https://stream.ads.ottera.tv/playlist.m3u8?network_id=4866
