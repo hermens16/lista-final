@@ -1,19 +1,19 @@
 📊 RELATÓRIO IPTV
 
-Total lido (bruto): 3016
-Total final: 3016
-Canais únicos: 2701
-Duplicados encontrados: 315
+Total lido (bruto): 3017
+Total final: 3017
+Canais únicos: 2703
+Duplicados encontrados: 314
 Removidos (dedup): 0
 
 📡 CANAIS POR FONTE (BRUTO):
-H -> 956
+H -> 957
 PLUTO -> 170
 PLEX -> 385
 SAMSUNG -> 1505
 
 📡 CANAIS POR FONTE (FINAL):
-H -> 956
+H -> 957
 PLUTO -> 170
 PLEX -> 385
 SAMSUNG -> 1505
@@ -29,7 +29,7 @@ FILMES -> 292
 INFANTIL -> 148
 MÚSICA -> 148
 NOTÍCIAS -> 94
-RELIGIOSO -> 61
+RELIGIOSO -> 62
 SÉRIES -> 470
 TV ABERTA -> 137
 VARIEDADES -> 745
