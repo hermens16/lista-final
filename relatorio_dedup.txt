@@ -2,8 +2,8 @@
 
 Total lido (bruto): 3016
 Total final: 2759
-Canais únicos: 2692
-Duplicados encontrados: 324
+Canais únicos: 2701
+Duplicados encontrados: 315
 Removidos (dedup): 257
 
 📡 CANAIS POR FONTE (BRUTO):
@@ -35,10 +35,10 @@ TV ABERTA -> 137
 VARIEDADES -> 637
 
 🔁 DUPLICADOS (TOP 20):
-INFORMACOES EM BREVE -> 21
  -> 15
 SBS  -> 15
   -> 14
+INFORMACOES EM BREVE -> 12
 TVN  -> 12
 MBC  -> 12
 TV -> 10
