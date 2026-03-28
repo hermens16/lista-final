@@ -11,6 +11,7 @@ playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
     ("PLUTO", r"C:\Users\User\Dev\pluto-tv\pluto_br_final.m3u8"),
     ("PLEX", r"C:\Users\User\Dev\plex-tv\playlist_final.m3u"),
+    ("LG", r"C:\Users\User\Dev\lg-tv\lg_channels_final.m3u"),
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
 
