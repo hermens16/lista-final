@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL + AUDITORIA POR FONTE + POSIÇÃO CULTURA")
+print("🚀 SUPER LISTA FINAL + CLASSIFICAÇÃO INTELIGENTE + CULTURA FIX")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -15,29 +15,12 @@ playlists = [
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
 
-# arquivos
 saida_dedup = "super_lista.m3u"
 saida_full = "super_lista_full.m3u"
 
-relatorio_dedup = "relatorio_dedup.txt"
-relatorio_full = "relatorio_full.txt"
-
-# estruturas
-saida_h = []
-saida_fast = []
-saida_fast_full = []
-
-canais_fast_vistos = set()
-contador_nomes = Counter()
-
-total_lidos = 0
-
-contador_origem_bruto = defaultdict(int)
-contador_origem_final = defaultdict(int)
-
-ALVO_FIXO = {"TV CULTURA", "CANAL UOL"}
-
+# ==============================
 # NORMALIZAÇÃO
+# ==============================
 def normalizar_nome(nome):
     nome = nome.upper().strip()
     nome = unicodedata.normalize('NFKD', nome)
@@ -50,17 +33,62 @@ def extrair_grupo(extinf):
         return extinf.split('group-title="')[1].split('"')[0]
     return "VARIEDADES"
 
-# 🔥 REPOSICIONAMENTO CULTURA
+# ==============================
+# 🎯 CLASSIFICADOR INTELIGENTE
+# ==============================
+def classificar_canal(nome, grupo_original):
+
+    nome = normalizar_nome(nome)
+
+    # NÃO MEXE NA COMÉDIA ORIGINAL (corrige seu bug)
+    if "COMEDIA" in grupo_original.upper() or "COMÉDIA" in grupo_original.upper():
+        return "COMÉDIA"
+
+    # COMÉDIA por nome
+    if any(x in nome for x in [
+        "COMEDY","HUMOR","PEGADINHA","STAND UP","FAIL","LAUGH",
+        "CHAVES","CHAPOLIN","MR BEAN","TRAPALHOES",
+        "TODO MUNDO ODEIA O CHRIS","THE OFFICE","BROOKLYN",
+        "SOUTH PARK","OS SIMPSONS","FAMILY GUY"
+    ]):
+        return "COMÉDIA"
+
+    # NOTÍCIAS
+    if any(x in nome for x in [
+        "CNN","GLOBO NEWS","GLOBONEWS","BAND NEWS",
+        "RECORD NEWS","JP NEWS","JOVEM PAN"
+    ]):
+        return "NOTÍCIAS"
+
+    # ESPORTES
+    if any(x in nome for x in [
+        "SPORT","ESPN","FUTEBOL","NBA","UFC"
+    ]):
+        return "ESPORTES"
+
+    # FILMES
+    if any(x in nome for x in [
+        "CINE","MOVIE","FILME","TELECINE","HBO"
+    ]):
+        return "FILMES"
+
+    return grupo_original.upper()
+
+# ==============================
+# 🔥 REPOSICIONAMENTO CULTURA / UOL
+# ==============================
+ALVO_FIXO = {"TV CULTURA", "CANAL UOL"}
+
 def reposicionar_tv_aberta(lista):
 
     base = []
-    pluto_alvo = []
+    alvo = []
 
     for extinf, url, origem in lista:
         nome = normalizar_nome(extinf.split(",")[-1])
 
-        if origem == "PLUTO" and nome in ALVO_FIXO:
-            pluto_alvo.append((extinf, url, origem))
+        if nome in ALVO_FIXO:
+            alvo.append((extinf, url, origem))
         else:
             base.append((extinf, url, origem))
 
@@ -72,15 +100,19 @@ def reposicionar_tv_aberta(lista):
 
         nome = normalizar_nome(item[0].split(",")[-1])
 
-        if not inserido and nome == "CULTURA":
-            resultado.extend(pluto_alvo)
+        # 🔥 INSERE LOGO APÓS QUALQUER "CULTURA"
+        if not inserido and "CULTURA" in nome:
+            resultado.extend(alvo)
             inserido = True
 
-    if not inserido and pluto_alvo:
-        resultado = pluto_alvo + resultado
+    if not inserido:
+        resultado = alvo + resultado
 
     return resultado
 
+# ==============================
+# LEITURA
+# ==============================
 def ler_playlist(caminho):
     if caminho.startswith("http"):
         try:
@@ -96,56 +128,64 @@ def ler_playlist(caminho):
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
+# ==============================
 # PROCESSAMENTO
+# ==============================
+dados = {}
+
 for tipo, caminho in playlists:
-
-    print(f"📂 Processando: {tipo}")
-
+    print(f"📂 {tipo}")
     linhas = ler_playlist(caminho)
+
+    canais = []
     i = 0
 
     while i < len(linhas):
-
-        if linhas[i].startswith("#EXTINF"):
-
-            if i + 1 >= len(linhas):
-                break
+        if linhas[i].startswith("#EXTINF") and i + 1 < len(linhas):
 
             extinf = linhas[i]
             url = linhas[i+1]
 
-            nome = extinf.split(",")[-1].strip() or "SEM NOME"
+            nome = extinf.split(",")[-1].strip()
             nome_norm = normalizar_nome(nome)
 
-            contador_nomes[nome_norm] += 1
-            total_lidos += 1
-            contador_origem_bruto[tipo] += 1
-
-            if tipo == "H":
-                saida_h.append((extinf, url, tipo))
-                contador_origem_final["H"] += 1
-
-            else:
-                saida_fast_full.append((extinf, url, tipo))
-                contador_origem_final[tipo] += 1
-
-                if nome_norm not in canais_fast_vistos:
-                    canais_fast_vistos.add(nome_norm)
-                    saida_fast.append((extinf, url, tipo))
-
+            canais.append((nome_norm, extinf, url, tipo))
             i += 2
-            continue
+        else:
+            i += 1
 
-        i += 1
+    dados[tipo] = canais
 
-# 🔥 AGRUPAMENTO (SEM RECLASSIFICAR)
-def montar_lista(saida_total):
+# ==============================
+# DEDUP
+# ==============================
+lista_dedup = []
+vistos = set()
+
+for tipo in ["H", "PLUTO", "PLEX", "LG", "SAMSUNG"]:
+    for nome, extinf, url, origem in dados.get(tipo, []):
+        if nome not in vistos:
+            lista_dedup.append((extinf, url, origem))
+            vistos.add(nome)
+
+# FULL
+lista_full = []
+for tipo in ["H", "PLUTO", "PLEX", "LG", "SAMSUNG"]:
+    lista_full.extend([(e,u,t) for _,e,u,t in dados.get(tipo, [])])
+
+# ==============================
+# AGRUPAMENTO
+# ==============================
+def montar_lista(lista):
 
     grupos = defaultdict(list)
 
-    for extinf, url, origem in saida_total:
+    for extinf, url, origem in lista:
 
-        grupo = extrair_grupo(extinf).upper().strip()
+        nome = extinf.split(",")[-1].strip()
+        grupo_original = extrair_grupo(extinf)
+
+        grupo = classificar_canal(nome, grupo_original)
 
         if 'group-title="' in extinf:
             extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
@@ -159,91 +199,38 @@ def montar_lista(saida_total):
 
     return grupos
 
-# 🔥 ORDEM (COM COMÉDIA INCLUÍDO)
 ORDEM = [
-    "TV ABERTA","EVENTOS","ESPORTES","FILMES","SÉRIES",
-    "COMÉDIA",
-    "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
-    "INFANTIL","MÚSICA","NOTÍCIAS","RELIGIOSO",
-    "VARIEDADES","RÁDIO","ADULTO"
+    "TV ABERTA","ESPORTES","FILMES","SÉRIES",
+    "DOCUMENTÁRIOS","INFANTIL","COMÉDIA",
+    "NOTÍCIAS","VARIEDADES"
 ]
 
-# 🔥 SALVAR COM FALLBACK
 def salvar(nome, grupos):
     with open(nome, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
-
-        usados = set()
-
         for g in ORDEM:
             if g in grupos:
-                usados.add(g)
                 for e,u,_ in grupos[g]:
                     f.write(e)
                     f.write(u)
 
-        # grupos não previstos
-        for g in sorted(grupos):
-            if g not in usados:
-                for e,u,_ in grupos[g]:
-                    f.write(e)
-                    f.write(u)
-
-# LISTAS
-lista_dedup = saida_h + saida_fast
-lista_full = saida_h + saida_fast_full
-
+# ==============================
+# EXECUÇÃO
+# ==============================
 grupos_dedup = montar_lista(lista_dedup)
 grupos_full = montar_lista(lista_full)
 
 salvar(saida_dedup, grupos_dedup)
 salvar(saida_full, grupos_full)
 
-# RELATÓRIOS
-def gerar_relatorio(nome, grupos, lista_final):
-
-    duplicados_total = sum(qtd - 1 for qtd in contador_nomes.values() if qtd > 1)
-    canais_unicos = len(contador_nomes)
-    total_final = len(lista_final)
-
-    with open(nome, "w", encoding="utf-8") as f:
-
-        f.write("📊 RELATÓRIO IPTV\n\n")
-
-        f.write(f"Total lido (bruto): {total_lidos}\n")
-        f.write(f"Total final: {total_final}\n")
-        f.write(f"Canais únicos: {canais_unicos}\n")
-        f.write(f"Duplicados encontrados: {duplicados_total}\n")
-        f.write(f"Removidos (dedup): {total_lidos - total_final}\n\n")
-
-        f.write("📡 CANAIS POR FONTE (BRUTO):\n")
-        for k,v in contador_origem_bruto.items():
-            f.write(f"{k} -> {v}\n")
-
-        f.write("\n📡 CANAIS POR FONTE (FINAL):\n")
-        for k,v in contador_origem_final.items():
-            f.write(f"{k} -> {v}\n")
-
-        f.write("\n📂 CANAIS POR GRUPO:\n")
-        for g in sorted(grupos):
-            f.write(f"{g} -> {len(grupos[g])}\n")
-
-        f.write("\n🔁 DUPLICADOS (TOP 20):\n")
-        for nome_canal, qtd in contador_nomes.most_common(20):
-            if qtd > 1:
-                f.write(f"{nome_canal} -> {qtd}\n")
-
-gerar_relatorio(relatorio_dedup, grupos_dedup, lista_dedup)
-gerar_relatorio(relatorio_full, grupos_full, lista_full)
-
-# GIT
+# ==============================
+# GIT (CORRIGIDO)
+# ==============================
 def git(cmd):
-    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    print(r.stdout)
-    print(r.stderr)
+    subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit --allow-empty -m "estrutura final + comedia + cultura ok"')
+git('git commit -m "fix: comedia + cultura + uol + ordem corrigida"')
 git("git push origin main")
 
 print("✅ FINALIZADO COM SUCESSO")
