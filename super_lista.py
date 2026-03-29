@@ -4,7 +4,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 GERANDO SUPER LISTA (DEDUP + FULL)")
+print("🚀 GERANDO SUPER LISTA (DEDUP + FULL + AJUSTE CULTURA)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -41,6 +41,49 @@ def ler_playlist(caminho):
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
+# 🔥 AJUSTE CULTURA (POSIÇÃO EXATA)
+def ajustar_cultura(lista):
+
+    cultura = None
+    globo = None
+    extras = []
+    resto = []
+
+    for extinf, url in lista:
+        nome = normalizar_nome(extinf.split(",")[-1])
+
+        if nome == "CULTURA":
+            cultura = (extinf, url)
+
+        elif nome == "GLOBOPLAY NOVELAS":
+            globo = (extinf, url)
+
+        elif nome in ["TV CULTURA", "CANAL UOL"]:
+            extras.append((extinf, url))
+
+        else:
+            resto.append((extinf, url))
+
+    nova_lista = []
+    inserido = False
+
+    for item in resto:
+        nome = normalizar_nome(item[0].split(",")[-1])
+
+        if nome == "CULTURA" and not inserido:
+            if cultura:
+                nova_lista.append(cultura)
+
+            nova_lista.extend(extras)
+            inserido = True
+        else:
+            nova_lista.append(item)
+
+    if not inserido:
+        nova_lista = extras + nova_lista
+
+    return nova_lista
+
 # PROCESSAMENTO
 dados = {}
 
@@ -70,26 +113,34 @@ for tipo, caminho in playlists:
 lista_full = []
 
 for tipo in ["H", "PLUTO", "PLEX", "LG", "SAMSUNG"]:
-    lista_full.extend([(e,u) for _,e,u in dados.get(tipo, [])])
+    canais = [(e, u) for _, e, u in dados.get(tipo, [])]
+
+    if tipo == "H":
+        canais = ajustar_cultura(canais)
+
+    lista_full.extend(canais)
 
 # 🔥 DEDUP INTELIGENTE
 lista_dedup = []
 
-# H entra tudo
-vistos = set()
+# H
+lista_h = [(e, u) for _, e, u in dados.get("H", [])]
+lista_h = ajustar_cultura(lista_h)
 
-for nome, extinf, url in dados.get("H", []):
+vistos = set()
+for extinf, url in lista_h:
+    nome = normalizar_nome(extinf.split(",")[-1])
     lista_dedup.append((extinf, url))
     vistos.add(nome)
 
-# PLUTO entra tudo (prioridade)
+# PLUTO
 pluto_nomes = set()
 for nome, extinf, url in dados.get("PLUTO", []):
     lista_dedup.append((extinf, url))
     pluto_nomes.add(nome)
     vistos.add(nome)
 
-# PLEX (remove duplicados de PLUTO)
+# PLEX
 plex_nomes = set()
 for nome, extinf, url in dados.get("PLEX", []):
     if nome not in pluto_nomes:
@@ -97,7 +148,7 @@ for nome, extinf, url in dados.get("PLEX", []):
         plex_nomes.add(nome)
         vistos.add(nome)
 
-# LG (remove duplicados de PLUTO + PLEX)
+# LG
 lg_nomes = set()
 for nome, extinf, url in dados.get("LG", []):
     if nome not in pluto_nomes and nome not in plex_nomes:
@@ -105,7 +156,7 @@ for nome, extinf, url in dados.get("LG", []):
         lg_nomes.add(nome)
         vistos.add(nome)
 
-# SAMSUNG (remove duplicados de todos anteriores)
+# SAMSUNG
 for nome, extinf, url in dados.get("SAMSUNG", []):
     if nome not in pluto_nomes and nome not in plex_nomes and nome not in lg_nomes:
         lista_dedup.append((extinf, url))
@@ -127,7 +178,7 @@ def git(cmd):
     subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit --allow-empty -m "dedup correto + full lista"')
+git('git commit --allow-empty -m "dedup + full + ajuste cultura ok"')
 git("git push origin main")
 
 print("✅ GERADO:")
