@@ -50,7 +50,7 @@ def extrair_grupo(extinf):
         return extinf.split('group-title="')[1].split('"')[0]
     return "VARIEDADES"
 
-# 🔥 REPOSICIONAMENTO CULTURA
+# 🔥 REPOSICIONAMENTO CULTURA (INALTERADO)
 def reposicionar_tv_aberta(lista):
 
     base = []
@@ -80,50 +80,6 @@ def reposicionar_tv_aberta(lista):
         resultado = pluto_alvo + resultado
 
     return resultado
-
-# NOTÍCIAS INTELIGENTE
-def normalizar_grupo(grupo, nome_canal):
-
-    g = grupo.upper()
-    n = nome_canal.upper()
-
-    if any(x in n for x in [
-        "CNN","GLOBO NEWS","GLOBONEWS","BLOOMBERG",
-        "RECORD NEWS","BAND NEWS","JP NEWS","JOVEM PAN NEWS","NEWS"
-    ]):
-        return "NOTÍCIAS"
-
-    if any(x in g for x in ["NEWS","NOTIC","JORNAL"]):
-        return "NOTÍCIAS"
-
-    if "EVENT" in g:
-        return "EVENTOS"
-    if "ABERTA" in g:
-        return "TV ABERTA"
-    if "SPORT" in g or "ESPORTE" in g:
-        return "ESPORTES"
-    if "MOVIE" in g or "FILME" in g:
-        return "FILMES"
-    if any(x in g for x in ["SERIE","SÉRIE","DRAMA","COMED"]):
-        return "SÉRIES"
-    if "DOC" in g:
-        return "DOCUMENTÁRIOS"
-    if "ANIME" in g:
-        return "ANIME & TOKUSATSU"
-    if "DESENHO" in g or "CARTOON" in g:
-        return "DESENHOS 24H"
-    if "INFANT" in g or "KIDS" in g:
-        return "INFANTIL"
-    if "MUSIC" in g or "MÚSICA" in g:
-        return "MÚSICA"
-    if "RELIG" in g:
-        return "RELIGIOSO"
-    if "RADIO" in g:
-        return "RÁDIO"
-    if "ADULT" in g:
-        return "ADULTO"
-
-    return "VARIEDADES"
 
 def ler_playlist(caminho):
     if caminho.startswith("http"):
@@ -182,15 +138,15 @@ for tipo, caminho in playlists:
 
         i += 1
 
-# AGRUPAMENTO
+# 🔥 AGRUPAMENTO (CORRIGIDO AQUI)
 def montar_lista(saida_total):
 
     grupos = defaultdict(list)
 
     for extinf, url, origem in saida_total:
 
-        nome = extinf.split(",")[-1].strip()
-        grupo = normalizar_grupo(extrair_grupo(extinf), nome)
+        # ✅ USA GRUPO ORIGINAL (SEM RECLASSIFICAR)
+        grupo = extrair_grupo(extinf).upper().strip()
 
         if 'group-title="' in extinf:
             extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
@@ -199,13 +155,13 @@ def montar_lista(saida_total):
 
         grupos[grupo].append((extinf, url, origem))
 
-    # reposiciona canais dentro de TV ABERTA
+    # 🔥 mantém sua regra
     if "TV ABERTA" in grupos:
         grupos["TV ABERTA"] = reposicionar_tv_aberta(grupos["TV ABERTA"])
 
     return grupos
 
-# 🔥 ORDEM CORRIGIDA AQUI
+# ORDEM DOS GRUPOS
 ORDEM = [
     "TV ABERTA","EVENTOS","ESPORTES","FILMES","SÉRIES",
     "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
@@ -276,7 +232,7 @@ def git(cmd):
     print(r.stderr)
 
 git("git add -A")
-git('git commit --allow-empty -m "ordem grupos + cultura ok"')
+git('git commit --allow-empty -m "ordem original mantida + cultura ok"')
 git("git push origin main")
 
 print("✅ FINALIZADO COM SUCESSO")
