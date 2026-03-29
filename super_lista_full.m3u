@@ -65,6 +65,10 @@ http://lmdns.online:80/4x6cXF/ehfxdp/95649.m3u8
 http://lmdns.online:80/4x6cXF/ehfxdp/90409.m3u8
 #EXTINF:-1 tvg-id="Rede TV.br" tvg-name="REDE TV" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/9/9a/RedeTV%21_logo_2019.png/revision/latest?cb=20191119025631" group-title="TV ABERTA",REDE TV
 http://lmdns.online:80/4x6cXF/ehfxdp/95470.m3u8
+#EXTINF:-1 tvg-id="Tvcultura.br" tvg-name="CULTURA" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Cultura_logo_2013.svg/960px-Cultura_logo_2013.svg.png" group-title="TV ABERTA",CULTURA
+http://lmdns.online:80/4x6cXF/ehfxdp/89900.m3u8
+#EXTINF:-1 tvg-id="Viva.br" tvg-name="GLOBOPLAY NOVELAS" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Globoplay_Novelas.svg/960px-Globoplay_Novelas.svg.png" group-title="TV ABERTA",GLOBOPLAY NOVELAS
+http://lmdns.online:80/4x6cXF/ehfxdp/90440.m3u8
 #EXTINF:-1 tvg-id="Multishow.br" tvg-name="MULTISHOW" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Multishow_logo_red_2012.svg/1280px-Multishow_logo_red_2012.svg.png" group-title="TV ABERTA",MULTISHOW
 http://lmdns.online:80/4x6cXF/ehfxdp/90173.m3u8
 #EXTINF:-1 tvg-id="Gnt.br" tvg-name="GNT" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/c/c9/GNT_logo-roxo.png" group-title="TV ABERTA",GNT
