@@ -50,7 +50,7 @@ def extrair_grupo(extinf):
         return extinf.split('group-title="')[1].split('"')[0]
     return "VARIEDADES"
 
-# 🔥 REPOSICIONAMENTO CULTURA (INALTERADO)
+# 🔥 REPOSICIONAMENTO CULTURA
 def reposicionar_tv_aberta(lista):
 
     base = []
@@ -138,14 +138,13 @@ for tipo, caminho in playlists:
 
         i += 1
 
-# 🔥 AGRUPAMENTO (CORRIGIDO AQUI)
+# 🔥 AGRUPAMENTO (SEM RECLASSIFICAR)
 def montar_lista(saida_total):
 
     grupos = defaultdict(list)
 
     for extinf, url, origem in saida_total:
 
-        # ✅ USA GRUPO ORIGINAL (SEM RECLASSIFICAR)
         grupo = extrair_grupo(extinf).upper().strip()
 
         if 'group-title="' in extinf:
@@ -155,25 +154,37 @@ def montar_lista(saida_total):
 
         grupos[grupo].append((extinf, url, origem))
 
-    # 🔥 mantém sua regra
     if "TV ABERTA" in grupos:
         grupos["TV ABERTA"] = reposicionar_tv_aberta(grupos["TV ABERTA"])
 
     return grupos
 
-# ORDEM DOS GRUPOS
+# 🔥 ORDEM (COM COMÉDIA INCLUÍDO)
 ORDEM = [
     "TV ABERTA","EVENTOS","ESPORTES","FILMES","SÉRIES",
+    "COMÉDIA",
     "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
     "INFANTIL","MÚSICA","NOTÍCIAS","RELIGIOSO",
     "VARIEDADES","RÁDIO","ADULTO"
 ]
 
+# 🔥 SALVAR COM FALLBACK
 def salvar(nome, grupos):
     with open(nome, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
+
+        usados = set()
+
         for g in ORDEM:
             if g in grupos:
+                usados.add(g)
+                for e,u,_ in grupos[g]:
+                    f.write(e)
+                    f.write(u)
+
+        # grupos não previstos
+        for g in sorted(grupos):
+            if g not in usados:
                 for e,u,_ in grupos[g]:
                     f.write(e)
                     f.write(u)
@@ -232,7 +243,7 @@ def git(cmd):
     print(r.stderr)
 
 git("git add -A")
-git('git commit --allow-empty -m "ordem original mantida + cultura ok"')
+git('git commit --allow-empty -m "estrutura final + comedia + cultura ok"')
 git("git push origin main")
 
 print("✅ FINALIZADO COM SUCESSO")
