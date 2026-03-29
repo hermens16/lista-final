@@ -5,7 +5,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL + CORREÇÃO ABSOLUTA DE GRUPOS")
+print("🚀 SUPER LISTA FINAL (SEM ALTERAR GRUPOS)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -15,25 +15,13 @@ playlists = [
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
 
-saida_dedup = "super_lista.m3u"
-saida_full = "super_lista_full.m3u"
-
-relatorio_dedup = "relatorio_dedup.txt"
-relatorio_full = "relatorio_full.txt"
+saida_final = "super_lista.m3u"
 
 saida_h = []
-saida_fast = []
-saida_fast_full = []
+saida_outros = []
 
-canais_fast_vistos = set()
+canais_vistos = set()
 contador_nomes = Counter()
-
-total_lidos = 0
-
-contador_origem_bruto = defaultdict(int)
-contador_origem_final = defaultdict(int)
-
-ALVO_FIXO = {"TV CULTURA", "CANAL UOL"}
 
 # 🔧 NORMALIZAÇÃO
 def normalizar_nome(nome):
@@ -43,132 +31,7 @@ def normalizar_nome(nome):
     nome = re.sub(r'\s+', ' ', nome)
     return nome
 
-def extrair_grupo(extinf):
-    if 'group-title="' in extinf:
-        return extinf.split('group-title="')[1].split('"')[0]
-    return "VARIEDADES"
-
-# 🔥 REPOSICIONAMENTO CULTURA
-def reposicionar_tv_aberta(lista):
-
-    base = []
-    pluto_alvo = []
-
-    for extinf, url, origem in lista:
-        nome = normalizar_nome(extinf.split(",")[-1])
-
-        if origem == "PLUTO" and nome in ALVO_FIXO:
-            pluto_alvo.append((extinf, url, origem))
-        else:
-            base.append((extinf, url, origem))
-
-    resultado = []
-    inserido = False
-
-    for item in base:
-        resultado.append(item)
-
-        nome = normalizar_nome(item[0].split(",")[-1])
-
-        if not inserido and nome == "CULTURA":
-            resultado.extend(pluto_alvo)
-            inserido = True
-
-    if not inserido and pluto_alvo:
-        resultado = pluto_alvo + resultado
-
-    return resultado
-
-# 🔥 CLASSIFICAÇÃO ULTRA INTELIGENTE
-def normalizar_grupo(grupo, nome_canal):
-
-    g = grupo.upper()
-    n = normalizar_nome(nome_canal)
-
-    # 🔴 CORREÇÃO FORTE (CASOS REAIS)
-    if any(x in n for x in [
-        "FOLHA POLITICA",
-        "AGRO MAIS",
-        "TV ASSEMBLEIA",
-        "TV CAMARA",
-        "TV ALEGO"
-    ]):
-        return "NOTÍCIAS"
-
-    # 📰 POLÍTICA / INSTITUCIONAL / RURAL
-    if any(x in n for x in [
-        "POLITICA","POLITICO","CAMARA","SENADO",
-        "ASSEMBLEIA","GOVERNO","CONGRESSO",
-        "AGRO","RURAL"
-    ]):
-        return "NOTÍCIAS"
-
-    # 📰 NOTÍCIAS GERAIS
-    if any(x in n for x in [
-        "NEWS","JORNAL","REPORT","CNN",
-        "GLOBO NEWS","GLOBONEWS","BAND NEWS",
-        "RECORD NEWS","JP NEWS","JOVEM PAN NEWS",
-        "BLOOMBERG"
-    ]):
-        return "NOTÍCIAS"
-
-    # ⚽ ESPORTES
-    if any(x in n for x in [
-        "ESPN","SPORT","FUTEBOL","PREMIERE"
-    ]):
-        return "ESPORTES"
-
-    # ⛪ RELIGIOSO
-    if any(x in n for x in [
-        "IGREJA","GOSPEL","BIBLIA","VATICANO"
-    ]):
-        return "RELIGIOSO"
-
-    # 🎬 FILMES
-    if any(x in n for x in [
-        "CINEMA","FILME","MOVIE"
-    ]):
-        return "FILMES"
-
-    # 🎵 MÚSICA
-    if any(x in n for x in [
-        "MUSIC","HITS","MTV"
-    ]):
-        return "MÚSICA"
-
-    # fallback por grupo original
-    if any(x in g for x in ["NEWS","NOTIC","JORNAL"]):
-        return "NOTÍCIAS"
-
-    if "EVENT" in g:
-        return "EVENTOS"
-    if "ABERTA" in g:
-        return "TV ABERTA"
-    if "SPORT" in g:
-        return "ESPORTES"
-    if "MOVIE" in g:
-        return "FILMES"
-    if any(x in g for x in ["SERIE","DRAMA","COMED"]):
-        return "SÉRIES"
-    if "DOC" in g:
-        return "DOCUMENTÁRIOS"
-    if "ANIME" in g:
-        return "ANIME & TOKUSATSU"
-    if "DESENHO" in g or "CARTOON" in g:
-        return "DESENHOS 24H"
-    if "INFANT" in g or "KIDS" in g:
-        return "INFANTIL"
-    if "MUSIC" in g:
-        return "MÚSICA"
-    if "RELIG" in g:
-        return "RELIGIOSO"
-    if "RADIO" in g:
-        return "RÁDIO"
-    if "ADULT" in g:
-        return "ADULTO"
-
-    return "VARIEDADES"
-
+# 📥 LEITURA
 def ler_playlist(caminho):
     if caminho.startswith("http"):
         try:
@@ -206,91 +69,77 @@ for tipo, caminho in playlists:
             nome_norm = normalizar_nome(nome)
 
             contador_nomes[nome_norm] += 1
-            total_lidos += 1
-            contador_origem_bruto[tipo] += 1
 
             if tipo == "H":
-                saida_h.append((extinf, url, tipo))
-                contador_origem_final["H"] += 1
+                # H entra direto (prioridade máxima)
+                saida_h.append((extinf, url))
+                canais_vistos.add(nome_norm)
             else:
-                saida_fast_full.append((extinf, url, tipo))
-                contador_origem_final[tipo] += 1
-
-                if nome_norm not in canais_fast_vistos:
-                    canais_fast_vistos.add(nome_norm)
-                    saida_fast.append((extinf, url, tipo))
+                # deduplicação respeitando H
+                if nome_norm not in canais_vistos:
+                    canais_vistos.add(nome_norm)
+                    saida_outros.append((extinf, url))
 
             i += 2
             continue
 
         i += 1
 
-# 📦 AGRUPAMENTO FINAL
-def montar_lista(saida_total):
+# 🔥 AJUSTE ESPECÍFICO (TV CULTURA / CANAL UOL)
+def ajustar_cultura(lista):
 
-    grupos = defaultdict(list)
+    resultado = []
+    cultura = None
+    extras = []
 
-    for extinf, url, origem in saida_total:
+    for extinf, url in lista:
+        nome = normalizar_nome(extinf.split(",")[-1])
 
-        nome = extinf.split(",")[-1].strip()
-        nome_norm = normalizar_nome(nome)
-
-        grupo = normalizar_grupo(extrair_grupo(extinf), nome)
-
-        # 🔥 FORÇA FINAL (IMPOSSÍVEL ERRAR)
-        if any(x in nome_norm for x in [
-            "FOLHA POLITICA",
-            "AGRO MAIS",
-            "TV ASSEMBLEIA",
-            "TV CAMARA",
-            "TV ALEGO"
-        ]):
-            grupo = "NOTÍCIAS"
-
-        if 'group-title="' in extinf:
-            extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
+        if nome == "CULTURA":
+            cultura = (extinf, url)
+        elif nome in ["TV CULTURA", "CANAL UOL"]:
+            extras.append((extinf, url))
         else:
-            extinf = extinf.strip() + f' group-title="{grupo}"\n'
+            resultado.append((extinf, url))
 
-        grupos[grupo].append((extinf, url, origem))
+    final = []
+    inserido = False
 
-    if "TV ABERTA" in grupos:
-        grupos["TV ABERTA"] = reposicionar_tv_aberta(grupos["TV ABERTA"])
+    for item in resultado:
+        final.append(item)
 
-    return grupos
+        nome = normalizar_nome(item[0].split(",")[-1])
 
-ORDEM = [
-    "TV ABERTA","EVENTOS","ESPORTES","FILMES","SÉRIES",
-    "DOCUMENTÁRIOS","ANIME & TOKUSATSU","DESENHOS 24H",
-    "INFANTIL","MÚSICA","NOTÍCIAS","RELIGIOSO",
-    "VARIEDADES","RÁDIO","ADULTO"
-]
+        if not inserido and nome == "CULTURA":
+            if cultura:
+                final.append(cultura)
+            final.extend(extras)
+            inserido = True
 
-def salvar(nome, grupos):
-    with open(nome, "w", encoding="utf-8") as f:
-        f.write("#EXTM3U\n")
-        for g in ORDEM:
-            if g in grupos:
-                for e,u,_ in grupos[g]:
-                    f.write(e)
-                    f.write(u)
+    if not inserido:
+        final = extras + final
 
-# 🎯 GERAR LISTAS
-lista_dedup = saida_h + saida_fast
-lista_full = saida_h + saida_fast_full
+    return final
 
-grupos_dedup = montar_lista(lista_dedup)
-grupos_full = montar_lista(lista_full)
+# 🧠 JUNTA LISTA FINAL
+lista_final = saida_h + saida_outros
 
-salvar(saida_dedup, grupos_dedup)
-salvar(saida_full, grupos_full)
+# aplica ajuste cultura
+lista_final = ajustar_cultura(lista_final)
 
-# 🚀 GIT AUTO
+# 💾 SALVAR
+with open(saida_final, "w", encoding="utf-8") as f:
+    f.write("#EXTM3U\n")
+    for extinf, url in lista_final:
+        f.write(extinf)
+        f.write(url)
+
+# 🚀 GIT
 def git(cmd):
     subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit --allow-empty -m "fix grupos definitivo"')
+git('git commit --allow-empty -m "ordem correta sem alterar grupos"')
 git("git push origin main")
 
-print("✅ LISTA FINAL PERFEITA GERADA")
+print("✅ FINALIZADO PERFEITAMENTE")
