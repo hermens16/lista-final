@@ -4,7 +4,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 GERANDO SUPER LISTA (DEDUP + FULL + POSIÇÃO CULTURA OK)")
+print("🚀 GERANDO SUPER LISTA (DEDUP + FULL + POSIÇÃO CULTURA)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -43,18 +43,17 @@ def ler_playlist(caminho):
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
-# 🔥 SUA FUNÇÃO ORIGINAL (SEM ALTERAÇÃO)
+# 🔥 FUNÇÃO QUE VOCÊ PEDIU
 def reposicionar_tv_aberta(lista):
 
     base = []
-    pluto_alvo = []
+    extras = []
 
     for extinf, url in lista:
         nome = normalizar_nome(extinf.split(",")[-1])
 
-        # 👇 força pegar esses canais independente da origem
         if nome in ALVO_FIXO:
-            pluto_alvo.append((extinf, url))
+            extras.append((extinf, url))
         else:
             base.append((extinf, url))
 
@@ -67,11 +66,11 @@ def reposicionar_tv_aberta(lista):
         nome = normalizar_nome(item[0].split(",")[-1])
 
         if not inserido and nome == "CULTURA":
-            resultado.extend(pluto_alvo)
+            resultado.extend(extras)
             inserido = True
 
-    if not inserido and pluto_alvo:
-        resultado = pluto_alvo + resultado
+    if not inserido and extras:
+        resultado = extras + resultado
 
     return resultado
 
@@ -104,7 +103,7 @@ for tipo, caminho in playlists:
 lista_full = []
 
 for tipo in ["H", "PLUTO", "PLEX", "LG", "SAMSUNG"]:
-    canais = [(e, u) for _, e, u in dados.get(tipo, [])]
+    canais = [(e,u) for _,e,u in dados.get(tipo, [])]
 
     if tipo == "H":
         canais = reposicionar_tv_aberta(canais)
@@ -115,7 +114,7 @@ for tipo in ["H", "PLUTO", "PLEX", "LG", "SAMSUNG"]:
 lista_dedup = []
 
 # H
-lista_h = [(e, u) for _, e, u in dados.get("H", [])]
+lista_h = [(e,u) for _,e,u in dados.get("H", [])]
 lista_h = reposicionar_tv_aberta(lista_h)
 
 vistos = set()
@@ -127,7 +126,6 @@ for extinf, url in lista_h:
 
 # PLUTO
 pluto_nomes = set()
-
 for nome, extinf, url in dados.get("PLUTO", []):
     lista_dedup.append((extinf, url))
     pluto_nomes.add(nome)
@@ -135,7 +133,6 @@ for nome, extinf, url in dados.get("PLUTO", []):
 
 # PLEX
 plex_nomes = set()
-
 for nome, extinf, url in dados.get("PLEX", []):
     if nome not in pluto_nomes:
         lista_dedup.append((extinf, url))
@@ -144,7 +141,6 @@ for nome, extinf, url in dados.get("PLEX", []):
 
 # LG
 lg_nomes = set()
-
 for nome, extinf, url in dados.get("LG", []):
     if nome not in pluto_nomes and nome not in plex_nomes:
         lista_dedup.append((extinf, url))
@@ -157,7 +153,7 @@ for nome, extinf, url in dados.get("SAMSUNG", []):
         lista_dedup.append((extinf, url))
         vistos.add(nome)
 
-# SALVAR
+# 💾 SALVAR
 def salvar(nome, lista):
     with open(nome, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
@@ -168,12 +164,14 @@ def salvar(nome, lista):
 salvar(saida_dedup, lista_dedup)
 salvar(saida_full, lista_full)
 
-# GIT
+# 🚀 GIT (FIX PARA NÃO QUEBRAR)
 def git(cmd):
     subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit --allow-empty -m "fix final cultura posicao correta"')
+git('git commit -m "update lista" || echo "sem mudanças"')
 git("git push origin main")
 
-print("✅ FINALIZADO COM SUCESSO")
+print("✅ GERADO:")
+print("✔ super_lista.m3u")
+print("✔ super_lista_full.m3u")
