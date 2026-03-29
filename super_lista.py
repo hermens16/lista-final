@@ -1,11 +1,10 @@
 import os
-from collections import defaultdict, Counter
 import subprocess
 import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL + CLASSIFICAÇÃO INTELIGENTE + CULTURA FIX")
+print("🚀 SUPER LISTA FINAL (COM AJUSTES FINOS)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -15,222 +14,142 @@ playlists = [
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
 
-saida_dedup = "super_lista.m3u"
-saida_full = "super_lista_full.m3u"
+saida = "super_lista.m3u"
 
 # ==============================
 # NORMALIZAÇÃO
 # ==============================
-def normalizar_nome(nome):
+def normalizar(nome):
     nome = nome.upper().strip()
     nome = unicodedata.normalize('NFKD', nome)
     nome = nome.encode('ASCII', 'ignore').decode()
-    nome = re.sub(r'\s+', ' ', nome)
-    return nome
-
-def extrair_grupo(extinf):
-    if 'group-title="' in extinf:
-        return extinf.split('group-title="')[1].split('"')[0]
-    return "VARIEDADES"
+    return re.sub(r'\s+', ' ', nome)
 
 # ==============================
-# 🎯 CLASSIFICADOR INTELIGENTE
+# IDENTIFICAR COMÉDIA (INTELIGENTE)
 # ==============================
-def classificar_canal(nome, grupo_original):
+def eh_comedia(nome):
 
-    nome = normalizar_nome(nome)
+    nome = normalizar(nome)
 
-    # NÃO MEXE NA COMÉDIA ORIGINAL (corrige seu bug)
-    if "COMEDIA" in grupo_original.upper() or "COMÉDIA" in grupo_original.upper():
-        return "COMÉDIA"
+    palavras = [
+        "CHAVES","CHAPOLIN","MR BEAN","BEAN",
+        "TODO MUNDO ODEIA O CHRIS","EVERYBODY HATES CHRIS",
+        "THE OFFICE","BROOKLYN","BROOKLYN 99",
+        "SOUTH PARK","SIMPSONS","FAMILY GUY",
+        "AMERICAN DAD","RICK E MORTY","BOJACK",
+        "PEGADINHA","PEGADINHAS","HUMOR","COMEDY",
+        "FAIL","LAUGHS","STAND UP","PORTA DOS FUNDOS",
+        "PORTATV"
+    ]
 
-    # COMÉDIA por nome
-    if any(x in nome for x in [
-        "COMEDY","HUMOR","PEGADINHA","STAND UP","FAIL","LAUGH",
-        "CHAVES","CHAPOLIN","MR BEAN","TRAPALHOES",
-        "TODO MUNDO ODEIA O CHRIS","THE OFFICE","BROOKLYN",
-        "SOUTH PARK","OS SIMPSONS","FAMILY GUY"
-    ]):
-        return "COMÉDIA"
-
-    # NOTÍCIAS
-    if any(x in nome for x in [
-        "CNN","GLOBO NEWS","GLOBONEWS","BAND NEWS",
-        "RECORD NEWS","JP NEWS","JOVEM PAN"
-    ]):
-        return "NOTÍCIAS"
-
-    # ESPORTES
-    if any(x in nome for x in [
-        "SPORT","ESPN","FUTEBOL","NBA","UFC"
-    ]):
-        return "ESPORTES"
-
-    # FILMES
-    if any(x in nome for x in [
-        "CINE","MOVIE","FILME","TELECINE","HBO"
-    ]):
-        return "FILMES"
-
-    return grupo_original.upper()
-
-# ==============================
-# 🔥 REPOSICIONAMENTO CULTURA / UOL
-# ==============================
-ALVO_FIXO = {"TV CULTURA", "CANAL UOL"}
-
-def reposicionar_tv_aberta(lista):
-
-    base = []
-    alvo = []
-
-    for extinf, url, origem in lista:
-        nome = normalizar_nome(extinf.split(",")[-1])
-
-        if nome in ALVO_FIXO:
-            alvo.append((extinf, url, origem))
-        else:
-            base.append((extinf, url, origem))
-
-    resultado = []
-    inserido = False
-
-    for item in base:
-        resultado.append(item)
-
-        nome = normalizar_nome(item[0].split(",")[-1])
-
-        # 🔥 INSERE LOGO APÓS QUALQUER "CULTURA"
-        if not inserido and "CULTURA" in nome:
-            resultado.extend(alvo)
-            inserido = True
-
-    if not inserido:
-        resultado = alvo + resultado
-
-    return resultado
+    return any(p in nome for p in palavras)
 
 # ==============================
 # LEITURA
 # ==============================
-def ler_playlist(caminho):
+def ler(caminho):
     if caminho.startswith("http"):
         try:
-            r = requests.get(caminho, timeout=20)
-            return r.text.splitlines(keepends=True)
+            return requests.get(caminho, timeout=20).text.splitlines(keepends=True)
         except:
-            print(f"❌ Erro ao baixar: {caminho}")
             return []
     else:
         if not os.path.exists(caminho):
-            print(f"⚠️ Não encontrado: {caminho}")
             return []
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
 # ==============================
-# PROCESSAMENTO
+# PROCESSAMENTO + DEDUP
 # ==============================
-dados = {}
+vistos = set()
+lista = []
 
 for tipo, caminho in playlists:
-    print(f"📂 {tipo}")
-    linhas = ler_playlist(caminho)
 
-    canais = []
+    linhas = ler(caminho)
     i = 0
 
     while i < len(linhas):
-        if linhas[i].startswith("#EXTINF") and i + 1 < len(linhas):
+        if linhas[i].startswith("#EXTINF"):
 
             extinf = linhas[i]
             url = linhas[i+1]
 
             nome = extinf.split(",")[-1].strip()
-            nome_norm = normalizar_nome(nome)
+            nome_norm = normalizar(nome)
 
-            canais.append((nome_norm, extinf, url, tipo))
+            if nome_norm not in vistos:
+                vistos.add(nome_norm)
+                lista.append((extinf, url))
+
             i += 2
         else:
             i += 1
 
-    dados[tipo] = canais
+# ==============================
+# AJUSTES
+# ==============================
+resultado = []
+comedia_extra = []
+
+for extinf, url in lista:
+
+    nome = extinf.split(",")[-1].strip()
+    nome_norm = normalizar(nome)
+
+    grupo = ""
+    if 'group-title="' in extinf:
+        grupo = extinf.split('group-title="')[1].split('"')[0]
+
+    # 🎯 SE FOR COMÉDIA E NÃO ESTÁ EM COMÉDIA → MOVER
+    if eh_comedia(nome) and "COMEDIA" not in normalizar(grupo):
+        extinf = re.sub(r'group-title="[^"]*"', 'group-title="COMÉDIA"', extinf)
+        comedia_extra.append((extinf, url))
+    else:
+        resultado.append((extinf, url))
 
 # ==============================
-# DEDUP
+# REPOSICIONAR TV CULTURA / UOL
 # ==============================
-lista_dedup = []
-vistos = set()
+final = []
+inseridos = False
 
-for tipo in ["H", "PLUTO", "PLEX", "LG", "SAMSUNG"]:
-    for nome, extinf, url, origem in dados.get(tipo, []):
-        if nome not in vistos:
-            lista_dedup.append((extinf, url, origem))
-            vistos.add(nome)
+for extinf, url in resultado:
 
-# FULL
-lista_full = []
-for tipo in ["H", "PLUTO", "PLEX", "LG", "SAMSUNG"]:
-    lista_full.extend([(e,u,t) for _,e,u,t in dados.get(tipo, [])])
+    final.append((extinf, url))
 
-# ==============================
-# AGRUPAMENTO
-# ==============================
-def montar_lista(lista):
+    nome = normalizar(extinf.split(",")[-1])
 
-    grupos = defaultdict(list)
+    if not inseridos and nome == "CULTURA":
+        # adiciona logo depois
+        for e,u in resultado:
+            n = normalizar(e.split(",")[-1])
+            if n in ["TV CULTURA","CANAL UOL"]:
+                final.append((e,u))
+        inseridos = True
 
-    for extinf, url, origem in lista:
-
-        nome = extinf.split(",")[-1].strip()
-        grupo_original = extrair_grupo(extinf)
-
-        grupo = classificar_canal(nome, grupo_original)
-
-        if 'group-title="' in extinf:
-            extinf = re.sub(r'group-title="[^"]*"', f'group-title="{grupo}"', extinf)
-        else:
-            extinf = extinf.strip() + f' group-title="{grupo}"\n'
-
-        grupos[grupo].append((extinf, url, origem))
-
-    if "TV ABERTA" in grupos:
-        grupos["TV ABERTA"] = reposicionar_tv_aberta(grupos["TV ABERTA"])
-
-    return grupos
-
-ORDEM = [
-    "TV ABERTA","ESPORTES","FILMES","SÉRIES",
-    "DOCUMENTÁRIOS","INFANTIL","COMÉDIA",
-    "NOTÍCIAS","VARIEDADES"
-]
-
-def salvar(nome, grupos):
-    with open(nome, "w", encoding="utf-8") as f:
-        f.write("#EXTM3U\n")
-        for g in ORDEM:
-            if g in grupos:
-                for e,u,_ in grupos[g]:
-                    f.write(e)
-                    f.write(u)
+# adiciona comédia corrigida no final
+final.extend(comedia_extra)
 
 # ==============================
-# EXECUÇÃO
+# SALVAR
 # ==============================
-grupos_dedup = montar_lista(lista_dedup)
-grupos_full = montar_lista(lista_full)
-
-salvar(saida_dedup, grupos_dedup)
-salvar(saida_full, grupos_full)
+with open(saida, "w", encoding="utf-8") as f:
+    f.write("#EXTM3U\n")
+    for e,u in final:
+        f.write(e)
+        f.write(u)
 
 # ==============================
-# GIT (CORRIGIDO)
+# GIT
 # ==============================
 def git(cmd):
     subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit -m "fix: comedia + cultura + uol + ordem corrigida"')
+git('git commit -m "fix: ajuste fino comedia + cultura/uol"')
 git("git push origin main")
 
-print("✅ FINALIZADO COM SUCESSO")
+print("✅ FINALIZADO PERFEITAMENTE")
