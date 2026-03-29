@@ -4,7 +4,7 @@ import unicodedata
 import re
 import requests
 
-print("🚀 GERANDO SUPER LISTA (DEDUP + FULL + AJUSTE CULTURA OK)")
+print("🚀 GERANDO SUPER LISTA (DEDUP + FULL + POSIÇÃO CULTURA OK)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -16,6 +16,8 @@ playlists = [
 
 saida_dedup = "super_lista.m3u"
 saida_full = "super_lista_full.m3u"
+
+ALVO_FIXO = {"TV CULTURA", "CANAL UOL"}
 
 # NORMALIZAÇÃO
 def normalizar_nome(nome):
@@ -41,56 +43,37 @@ def ler_playlist(caminho):
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
-# 🔥 AJUSTE SEGURO CULTURA
-def ajustar_cultura(lista):
+# 🔥 SUA FUNÇÃO ORIGINAL (SEM ALTERAÇÃO)
+def reposicionar_tv_aberta(lista):
 
-    def get_nome(item):
-        return normalizar_nome(item[0].split(",")[-1])
+    base = []
+    pluto_alvo = []
 
-    nomes = [get_nome(i) for i in lista]
+    for extinf, url in lista:
+        nome = normalizar_nome(extinf.split(",")[-1])
 
-    # tenta localizar
-    try:
-        idx_cultura = nomes.index("CULTURA")
-        idx_globo = nomes.index("GLOBOPLAY NOVELAS")
-    except ValueError:
-        return lista  # não mexe se não encontrar
-
-    # remove extras da lista
-    lista_limpa = []
-    extras = []
-
-    for item in lista:
-        nome = get_nome(item)
-
-        if nome in ["TV CULTURA", "CANAL UOL"]:
-            extras.append(item)
+        # 👇 força pegar esses canais independente da origem
+        if nome in ALVO_FIXO:
+            pluto_alvo.append((extinf, url))
         else:
-            lista_limpa.append(item)
+            base.append((extinf, url))
 
-    # recalcula posições
-    nomes_limpos = [get_nome(i) for i in lista_limpa]
+    resultado = []
+    inserido = False
 
-    try:
-        idx_cultura = nomes_limpos.index("CULTURA")
-        idx_globo = nomes_limpos.index("GLOBOPLAY NOVELAS")
-    except ValueError:
-        return lista
+    for item in base:
+        resultado.append(item)
 
-    # posição correta
-    if idx_cultura < idx_globo:
-        pos = idx_cultura + 1
-    else:
-        pos = idx_globo
+        nome = normalizar_nome(item[0].split(",")[-1])
 
-    # insere exatamente no meio
-    nova_lista = (
-        lista_limpa[:pos] +
-        extras +
-        lista_limpa[pos:]
-    )
+        if not inserido and nome == "CULTURA":
+            resultado.extend(pluto_alvo)
+            inserido = True
 
-    return nova_lista
+    if not inserido and pluto_alvo:
+        resultado = pluto_alvo + resultado
+
+    return resultado
 
 # PROCESSAMENTO
 dados = {}
@@ -124,7 +107,7 @@ for tipo in ["H", "PLUTO", "PLEX", "LG", "SAMSUNG"]:
     canais = [(e, u) for _, e, u in dados.get(tipo, [])]
 
     if tipo == "H":
-        canais = ajustar_cultura(canais)
+        canais = reposicionar_tv_aberta(canais)
 
     lista_full.extend(canais)
 
@@ -133,7 +116,7 @@ lista_dedup = []
 
 # H
 lista_h = [(e, u) for _, e, u in dados.get("H", [])]
-lista_h = ajustar_cultura(lista_h)
+lista_h = reposicionar_tv_aberta(lista_h)
 
 vistos = set()
 
@@ -174,7 +157,7 @@ for nome, extinf, url in dados.get("SAMSUNG", []):
         lista_dedup.append((extinf, url))
         vistos.add(nome)
 
-# 💾 SALVAR
+# SALVAR
 def salvar(nome, lista):
     with open(nome, "w", encoding="utf-8") as f:
         f.write("#EXTM3U\n")
@@ -185,14 +168,12 @@ def salvar(nome, lista):
 salvar(saida_dedup, lista_dedup)
 salvar(saida_full, lista_full)
 
-# 🚀 GIT
+# GIT
 def git(cmd):
     subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit --allow-empty -m "dedup + full + cultura fix final"')
+git('git commit --allow-empty -m "fix final cultura posicao correta"')
 git("git push origin main")
 
-print("✅ GERADO COM SUCESSO:")
-print("✔ super_lista.m3u")
-print("✔ super_lista_full.m3u")
+print("✅ FINALIZADO COM SUCESSO")
