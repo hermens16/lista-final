@@ -1,11 +1,10 @@
 import os
-from collections import defaultdict, Counter
 import subprocess
 import unicodedata
 import re
 import requests
 
-print("🚀 SUPER LISTA FINAL (SEM ALTERAR GRUPOS)")
+print("🚀 GERANDO SUPER LISTA (DEDUP + FULL)")
 
 playlists = [
     ("H", "https://raw.githubusercontent.com/hermens16/h/refs/heads/main/h.m3u8"),
@@ -15,15 +14,10 @@ playlists = [
     ("SAMSUNG", r"C:\Users\User\Dev\samsung-tv\samsung_final.m3u")
 ]
 
-saida_final = "super_lista.m3u"
+saida_dedup = "super_lista.m3u"
+saida_full = "super_lista_full.m3u"
 
-saida_h = []
-saida_outros = []
-
-canais_vistos = set()
-contador_nomes = Counter()
-
-# 🔧 NORMALIZAÇÃO
+# NORMALIZAÇÃO
 def normalizar_nome(nome):
     nome = nome.upper().strip()
     nome = unicodedata.normalize('NFKD', nome)
@@ -31,7 +25,7 @@ def normalizar_nome(nome):
     nome = re.sub(r'\s+', ' ', nome)
     return nome
 
-# 📥 LEITURA
+# LEITURA
 def ler_playlist(caminho):
     if caminho.startswith("http"):
         try:
@@ -47,99 +41,95 @@ def ler_playlist(caminho):
         with open(caminho, "r", encoding="utf-8", errors="ignore") as f:
             return f.readlines()
 
-# 🔄 PROCESSAMENTO
+# PROCESSAMENTO
+dados = {}
+
 for tipo, caminho in playlists:
-
-    print(f"📂 Processando: {tipo}")
-
+    print(f"📂 {tipo}")
     linhas = ler_playlist(caminho)
+
+    canais = []
     i = 0
 
     while i < len(linhas):
-
-        if linhas[i].startswith("#EXTINF"):
-
-            if i + 1 >= len(linhas):
-                break
-
+        if linhas[i].startswith("#EXTINF") and i + 1 < len(linhas):
             extinf = linhas[i]
             url = linhas[i+1]
 
-            nome = extinf.split(",")[-1].strip() or "SEM NOME"
+            nome = extinf.split(",")[-1].strip()
             nome_norm = normalizar_nome(nome)
 
-            contador_nomes[nome_norm] += 1
-
-            if tipo == "H":
-                # H entra direto (prioridade máxima)
-                saida_h.append((extinf, url))
-                canais_vistos.add(nome_norm)
-            else:
-                # deduplicação respeitando H
-                if nome_norm not in canais_vistos:
-                    canais_vistos.add(nome_norm)
-                    saida_outros.append((extinf, url))
-
+            canais.append((nome_norm, extinf, url))
             i += 2
-            continue
-
-        i += 1
-
-# 🔥 AJUSTE ESPECÍFICO (TV CULTURA / CANAL UOL)
-def ajustar_cultura(lista):
-
-    resultado = []
-    cultura = None
-    extras = []
-
-    for extinf, url in lista:
-        nome = normalizar_nome(extinf.split(",")[-1])
-
-        if nome == "CULTURA":
-            cultura = (extinf, url)
-        elif nome in ["TV CULTURA", "CANAL UOL"]:
-            extras.append((extinf, url))
         else:
-            resultado.append((extinf, url))
+            i += 1
 
-    final = []
-    inserido = False
+    dados[tipo] = canais
 
-    for item in resultado:
-        final.append(item)
+# 🔥 FULL (SEM FILTRO)
+lista_full = []
 
-        nome = normalizar_nome(item[0].split(",")[-1])
+for tipo in ["H", "PLUTO", "PLEX", "LG", "SAMSUNG"]:
+    lista_full.extend([(e,u) for _,e,u in dados.get(tipo, [])])
 
-        if not inserido and nome == "CULTURA":
-            if cultura:
-                final.append(cultura)
-            final.extend(extras)
-            inserido = True
+# 🔥 DEDUP INTELIGENTE
+lista_dedup = []
 
-    if not inserido:
-        final = extras + final
+# H entra tudo
+vistos = set()
 
-    return final
+for nome, extinf, url in dados.get("H", []):
+    lista_dedup.append((extinf, url))
+    vistos.add(nome)
 
-# 🧠 JUNTA LISTA FINAL
-lista_final = saida_h + saida_outros
+# PLUTO entra tudo (prioridade)
+pluto_nomes = set()
+for nome, extinf, url in dados.get("PLUTO", []):
+    lista_dedup.append((extinf, url))
+    pluto_nomes.add(nome)
+    vistos.add(nome)
 
-# aplica ajuste cultura
-lista_final = ajustar_cultura(lista_final)
+# PLEX (remove duplicados de PLUTO)
+plex_nomes = set()
+for nome, extinf, url in dados.get("PLEX", []):
+    if nome not in pluto_nomes:
+        lista_dedup.append((extinf, url))
+        plex_nomes.add(nome)
+        vistos.add(nome)
+
+# LG (remove duplicados de PLUTO + PLEX)
+lg_nomes = set()
+for nome, extinf, url in dados.get("LG", []):
+    if nome not in pluto_nomes and nome not in plex_nomes:
+        lista_dedup.append((extinf, url))
+        lg_nomes.add(nome)
+        vistos.add(nome)
+
+# SAMSUNG (remove duplicados de todos anteriores)
+for nome, extinf, url in dados.get("SAMSUNG", []):
+    if nome not in pluto_nomes and nome not in plex_nomes and nome not in lg_nomes:
+        lista_dedup.append((extinf, url))
+        vistos.add(nome)
 
 # 💾 SALVAR
-with open(saida_final, "w", encoding="utf-8") as f:
-    f.write("#EXTM3U\n")
-    for extinf, url in lista_final:
-        f.write(extinf)
-        f.write(url)
+def salvar(nome, lista):
+    with open(nome, "w", encoding="utf-8") as f:
+        f.write("#EXTM3U\n")
+        for extinf, url in lista:
+            f.write(extinf)
+            f.write(url)
+
+salvar(saida_dedup, lista_dedup)
+salvar(saida_full, lista_full)
 
 # 🚀 GIT
 def git(cmd):
     subprocess.run(cmd, shell=True)
 
 git("git add -A")
-git('git commit --allow-empty -m "ordem correta sem alterar grupos"')
+git('git commit --allow-empty -m "dedup correto + full lista"')
 git("git push origin main")
 
-print("✅ FINALIZADO PERFEITAMENTE")
+print("✅ GERADO:")
+print("✔ super_lista.m3u (deduplicada)")
+print("✔ super_lista_full.m3u (completa)")
